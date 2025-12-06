@@ -23,7 +23,13 @@ interface SSEData {
   gifts: Gift[]
 }
 
+interface DrawAlert {
+  channel: string
+  timestamp: number
+}
+
 const sseData = ref<SSEData>({ giveaways: [], gifts: [] })
+const currentAlert = ref<DrawAlert | null>(null)
 const isConnected = ref(false)
 const isInitialized = ref(false)
 let eventSource: EventSource | null = null
@@ -51,6 +57,14 @@ function connect() {
   eventSource.addEventListener('update', (event) => {
     const data = JSON.parse(event.data) as SSEData
     sseData.value = data
+  })
+
+  eventSource.addEventListener('draw-alert', (event) => {
+    const data = JSON.parse(event.data) as { channel: string }
+    currentAlert.value = {
+      channel: data.channel,
+      timestamp: Date.now()
+    }
   })
 
   eventSource.onerror = () => {
@@ -83,6 +97,11 @@ function disconnect() {
 export function useSSE() {
   const giveaways = computed(() => sseData.value.giveaways)
   const gifts = computed(() => sseData.value.gifts)
+  const drawAlert = computed(() => currentAlert.value)
+
+  function clearAlert() {
+    currentAlert.value = null
+  }
 
   onMounted(() => {
     connect()
@@ -91,6 +110,8 @@ export function useSSE() {
   return {
     giveaways,
     gifts,
+    drawAlert,
+    clearAlert,
     isConnected,
     isInitialized,
     refresh: connect,

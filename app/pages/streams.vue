@@ -2,7 +2,84 @@
 const toast = useToast()
 
 // SSE pour les mises à jour en temps réel
-const { giveaways: sseGiveaways, gifts: sseGifts, isInitialized } = useSSE()
+const { giveaways: sseGiveaways, gifts: sseGifts, drawAlert, clearAlert, isInitialized } = useSSE()
+
+// Gestion des alertes de tirage
+const alertedChannel = ref<string | null>(null)
+let alertTimeout: ReturnType<typeof setTimeout> | null = null
+
+// Son d'alerte avec Web Audio API
+function playAlertSound() {
+  if (!import.meta.client) return
+
+  try {
+    const audioContext = new AudioContext()
+
+    // Jouer 3 bips courts
+    const playBeep = (time: number) => {
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+
+      oscillator.frequency.value = 800
+      oscillator.type = 'sine'
+
+      gainNode.gain.setValueAtTime(0.3, time)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.15)
+
+      oscillator.start(time)
+      oscillator.stop(time + 0.15)
+    }
+
+    const now = audioContext.currentTime
+    playBeep(now)
+    playBeep(now + 0.2)
+    playBeep(now + 0.4)
+  } catch {
+    // Ignorer les erreurs si l'audio ne peut pas être joué
+  }
+}
+
+// Déclencher une alerte pour une chaîne
+async function triggerDrawAlert(channel: string) {
+  try {
+    await $fetch(`/api/alert/${encodeURIComponent(channel)}`, {
+      method: 'POST'
+    })
+  } catch {
+    toast.add({
+      title: 'Erreur',
+      description: 'Impossible d\'envoyer l\'alerte',
+      color: 'error'
+    })
+  }
+}
+
+// Observer les alertes entrantes
+watch(drawAlert, (alert) => {
+  if (!alert) return
+
+  // Vérifier si on a ce stream ouvert
+  if (selectedChannels.value.includes(alert.channel)) {
+    alertedChannel.value = alert.channel
+    playAlertSound()
+
+    // Focus automatique sur le stream alerté
+    if (focusedChannel.value !== alert.channel) {
+      focusedChannel.value = alert.channel
+    }
+
+    // Effacer l'alerte visuelle après 10 secondes
+    if (alertTimeout) clearTimeout(alertTimeout)
+    alertTimeout = setTimeout(() => {
+      alertedChannel.value = null
+    }, 10000)
+  }
+
+  clearAlert()
+})
 
 // Données initiales via useFetch
 const { data: initialGiveaways } = await useFetch('/api/giveaways')
@@ -257,7 +334,10 @@ async function copyCommand(command: string) {
       >
         <div
           :class="[
-            'rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden',
+            'rounded-lg border-2 bg-white dark:bg-gray-900 overflow-hidden transition-all',
+            alertedChannel === channel
+              ? 'border-orange-500 ring-4 ring-orange-500/50 animate-pulse'
+              : 'border-gray-200 dark:border-gray-800',
             focusedChannel === channel ? 'h-full flex flex-col' : ''
           ]"
         >
@@ -304,6 +384,14 @@ async function copyCommand(command: string) {
               </div>
             </div>
             <div class="flex gap-1">
+              <UButton
+                icon="i-lucide-bell-ring"
+                size="xs"
+                color="warning"
+                variant="ghost"
+                title="Alerter: C'est le moment du tirage !"
+                @click="triggerDrawAlert(channel)"
+              />
               <UButton
                 :icon="focusedChannel === channel ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
                 size="xs"

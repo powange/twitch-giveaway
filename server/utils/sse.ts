@@ -28,3 +28,7 @@ export async function broadcastUpdate() {
     gifts: db.data.gifts,
   })
 }
+
+export function broadcastDrawAlert(channel: string) {
+  notifySSEClients('draw-alert', { channel })
+}
