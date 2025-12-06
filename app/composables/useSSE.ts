@@ -69,6 +69,7 @@ function connect() {
 
   eventSource.onerror = () => {
     isConnected.value = false
+    isInitialized.value = false // Reset pour utiliser les données initiales
     eventSource?.close()
     eventSource = null
 
