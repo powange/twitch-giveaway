@@ -4,6 +4,23 @@ const toast = useToast()
 // SSE pour les mises à jour en temps réel
 const { giveaways: sseGiveaways, gifts: sseGifts, drawAlert, clearAlert, isInitialized } = useSSE()
 
+// Twitch Player SDK
+const {
+  createPlayer,
+  destroyPlayer,
+  qualities,
+  currentQuality,
+  setQuality,
+  updateQualities,
+  globalMuted,
+  toggleMuteAll,
+  setLowVolumeAll,
+  globalPaused,
+  togglePlayPauseAll,
+  globalLowQuality,
+  toggleQualityAll
+} = useTwitchPlayer()
+
 // Gestion des alertes de tirage
 const alertedChannel = ref<string | null>(null)
 let alertTimeout: ReturnType<typeof setTimeout> | null = null
@@ -117,6 +134,35 @@ watch([selectedChannels, showChat], () => {
   }))
 }, { deep: true })
 
+// Créer les players quand les channels changent
+watch(selectedChannels, async (newChannels, oldChannels) => {
+  // Détruire les players supprimés
+  const removedChannels = (oldChannels || []).filter(c => !newChannels.includes(c))
+  for (const channel of removedChannels) {
+    destroyPlayer(channel)
+  }
+
+  // Créer les nouveaux players
+  const addedChannels = newChannels.filter(c => !(oldChannels || []).includes(c))
+  if (addedChannels.length > 0) {
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 200))
+
+    for (const channel of addedChannels) {
+      await createPlayer(`player-${channel}`, channel)
+    }
+  }
+}, { immediate: true, deep: true })
+
+// Recréer le player quand on focus/unfocus (le conteneur change de taille)
+watch(focusedChannel, async () => {
+  await nextTick()
+  // Rafraîchir les qualités après le changement de layout
+  for (const channel of selectedChannels.value) {
+    updateQualities(channel)
+  }
+})
+
 // Vérifier si un giveaway est clos (manuellement ou > 2 jours)
 function isGiveawayClosed(giveaway: { closed: boolean, date: string }): boolean {
   if (giveaway.closed) return true
@@ -152,10 +198,10 @@ function removeChatState(channel: string) {
 function toggleChannel(channel: string) {
   const index = selectedChannels.value.indexOf(channel)
   if (index === -1) {
-    selectedChannels.value.push(channel)
+    selectedChannels.value = [...selectedChannels.value, channel]
     showChat.value[channel] = false
   } else {
-    selectedChannels.value.splice(index, 1)
+    selectedChannels.value = selectedChannels.value.filter(c => c !== channel)
     removeChatState(channel)
   }
 }
@@ -197,7 +243,7 @@ const gridClass = computed(() => {
   return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
 })
 
-// Parent domain pour l'embed Twitch
+// Parent domain pour l'embed Twitch (chat uniquement)
 const parentDomain = computed(() => {
   if (import.meta.client) {
     return window.location.hostname
@@ -240,6 +286,20 @@ async function copyCommand(command: string) {
       color: 'error'
     })
   }
+}
+
+// Obtenir les qualités formatées pour un channel
+function getQualityOptions(channel: string) {
+  const channelQualities = qualities.value.get(channel) || []
+  return channelQualities.map(q => ({
+    label: q.name,
+    value: q.group
+  }))
+}
+
+// Changer la qualité d'un stream
+function handleQualityChange(channel: string, quality: string) {
+  setQuality(channel, quality)
 }
 </script>
 
@@ -292,6 +352,45 @@ async function copyCommand(command: string) {
       </div>
     </UCard>
 
+    <!-- Controles globaux -->
+    <div
+      v-if="selectedChannels.length"
+      class="flex justify-end gap-2 mb-4"
+    >
+      <UButton
+        :icon="globalPaused ? 'i-lucide-play' : 'i-lucide-pause'"
+        :label="globalPaused ? 'Tout lire' : 'Tout mettre en pause'"
+        :color="globalPaused ? 'success' : 'neutral'"
+        variant="outline"
+        size="sm"
+        @click="togglePlayPauseAll"
+      />
+      <UButton
+        :icon="globalMuted ? 'i-lucide-volume-x' : 'i-lucide-volume-2'"
+        :label="globalMuted ? 'Activer le son' : 'Couper le son'"
+        :color="globalMuted ? 'warning' : 'neutral'"
+        variant="outline"
+        size="sm"
+        @click="toggleMuteAll"
+      />
+      <UButton
+        icon="i-lucide-volume-1"
+        label="Son 1%"
+        color="neutral"
+        variant="outline"
+        size="sm"
+        @click="setLowVolumeAll"
+      />
+      <UButton
+        :icon="globalLowQuality ? 'i-lucide-signal' : 'i-lucide-signal-low'"
+        :label="globalLowQuality ? 'Qualite auto' : 'Qualite basse'"
+        :color="globalLowQuality ? 'info' : 'neutral'"
+        variant="outline"
+        size="sm"
+        @click="toggleQualityAll"
+      />
+    </div>
+
     <!-- Streams -->
     <div
       v-if="!selectedChannels.length"
@@ -343,7 +442,7 @@ async function copyCommand(command: string) {
         >
           <!-- Header -->
           <div class="flex justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
               <div class="flex items-center gap-2">
                 <UIcon
                   name="i-simple-icons-twitch"
@@ -381,6 +480,30 @@ async function copyCommand(command: string) {
                   title="Copier la commande"
                   @click="copyCommand(getChannelCommand(channel)!)"
                 />
+              </div>
+
+              <!-- Selecteur de qualité -->
+              <div
+                v-if="getQualityOptions(channel).length > 0"
+                class="flex items-center gap-1"
+              >
+                <UIcon
+                  name="i-lucide-settings-2"
+                  class="w-3 h-3 text-muted"
+                />
+                <select
+                  :value="currentQuality.get(channel) || 'auto'"
+                  class="text-xs bg-gray-100 dark:bg-gray-800 border-0 rounded px-2 py-1 cursor-pointer"
+                  @change="handleQualityChange(channel, ($event.target as HTMLSelectElement).value)"
+                >
+                  <option
+                    v-for="option in getQualityOptions(channel)"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
               </div>
             </div>
             <div class="flex gap-1">
@@ -429,22 +552,17 @@ async function copyCommand(command: string) {
                 : (showChat[channel] ? 'flex-col xl:flex-row' : '')
             ]"
           >
-            <!-- Player -->
+            <!-- Player (SDK Twitch) -->
             <div
               :class="[
                 focusedChannel === channel
                   ? 'flex-1 min-h-0'
-                  : 'relative w-full pb-[56.25%]'
+                  : 'relative w-full aspect-video'
               ]"
             >
-              <iframe
-                :src="`https://player.twitch.tv/?channel=${channel}&parent=${parentDomain}`"
-                :class="[
-                  focusedChannel === channel
-                    ? 'w-full h-full'
-                    : 'absolute inset-0 w-full h-full'
-                ]"
-                allowfullscreen
+              <div
+                :id="`player-${channel}`"
+                class="w-full h-full min-h-[300px] [&>iframe]:w-full [&>iframe]:h-full"
               />
             </div>
 
