@@ -5,8 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: twitch-giveaway
     restart: unless-stopped
-    ports:
-      - "3010:3000"
+#    ports:
+#      - "3010:3000"
     volumes:
       - giveaway-data:/app/data
     environment:
