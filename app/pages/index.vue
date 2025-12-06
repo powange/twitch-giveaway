@@ -248,10 +248,10 @@ function toggleFormGift(giftId: string) {
 }
 
 async function saveGiveaway() {
-  if (!form.twitchChannel || form.giftIds.length === 0 || !form.date) {
+  if (!form.twitchChannel || !form.date) {
     toast.add({
       title: 'Erreur',
-      description: 'La chaine Twitch, au moins un cadeau et la date sont requis',
+      description: 'La chaine Twitch et la date sont requis',
       color: 'error',
     })
     return
@@ -478,7 +478,7 @@ function getTodayDate() {
 
         <div class="space-y-3">
           <!-- Cadeaux -->
-          <div class="flex flex-wrap gap-4">
+          <div v-if="giveaway.giftIds.length > 0" class="flex flex-wrap gap-4">
             <div
               v-for="giftId in giveaway.giftIds"
               :key="giftId"
@@ -491,6 +491,9 @@ function getTodayDate() {
               >
               <span class="font-medium">{{ getGift(giftId)?.title || 'Inconnu' }}</span>
             </div>
+          </div>
+          <div v-else class="text-sm text-muted italic">
+            Aucun cadeau defini
           </div>
 
           <!-- Badges -->
@@ -579,7 +582,7 @@ function getTodayDate() {
               />
             </UFormField>
 
-            <UFormField label="Cadeaux" required>
+            <UFormField label="Cadeaux">
               <div class="flex flex-wrap gap-2">
                 <UButton
                   v-for="gift in gifts"

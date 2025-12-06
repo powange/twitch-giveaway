@@ -7,10 +7,10 @@ export default defineEventHandler(async (event) => {
   // Support giftIds (array) ou giftId (string pour rétrocompatibilité)
   const giftIds: string[] = body.giftIds || (body.giftId ? [body.giftId] : [])
 
-  if (!body.twitchChannel || giftIds.length === 0 || !body.type || !body.date) {
+  if (!body.twitchChannel || !body.type || !body.date) {
     throw createError({
       statusCode: 400,
-      message: 'Chaîne Twitch, au moins un cadeau, type et date sont requis',
+      message: 'Chaîne Twitch, type et date sont requis',
     })
   }
 
