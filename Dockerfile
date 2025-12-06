@@ -22,7 +22,9 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nuxtjs
 
 COPY --from=builder /app/.output ./.output
-COPY --from=builder /app/data ./data
+
+# Créer le dossier data (sera monté en volume)
+RUN mkdir -p ./data
 
 RUN chown -R nuxtjs:nodejs /app
 
