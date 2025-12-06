@@ -12,11 +12,12 @@ export interface Giveaway {
   id: string
   twitchChannel: string
   date: string
-  giftId: string
+  giftIds: string[]
   type: 'command' | 'ticket' | 'streamelements'
   streamElementsUrl?: string
   drawTime?: string
   requireFollow: boolean
+  closed: boolean
   createdAt: string
 }
 
@@ -38,7 +39,7 @@ export async function getDb(): Promise<Low<Database>> {
 
   await db.read()
 
-  // S'assurer que tous les champs existent (migration)
+  // S'assurer que tous les champs existent
   db.data.gifts = db.data.gifts || []
   db.data.giveaways = db.data.giveaways || []
 

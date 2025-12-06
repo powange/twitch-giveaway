@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Vérifier si le cadeau est utilisé par un giveaway
-  const isUsed = db.data.giveaways.some(giveaway => giveaway.giftId === id)
+  const isUsed = db.data.giveaways.some(giveaway => giveaway.giftIds.includes(id))
   if (isUsed) {
     throw createError({
       statusCode: 400,

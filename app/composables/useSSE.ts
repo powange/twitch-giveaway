@@ -8,11 +8,12 @@ interface Giveaway {
   id: string
   twitchChannel: string
   date: string
-  giftId: string
+  giftIds: string[]
   type: 'command' | 'ticket' | 'streamelements'
   streamElementsUrl?: string
   drawTime?: string
   requireFollow: boolean
+  closed: boolean
   createdAt: string
 }
 

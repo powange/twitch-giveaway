@@ -12,10 +12,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (!body.twitchChannel || !body.giftId || !body.type || !body.date) {
+  // Support giftIds (array) ou giftId (string pour rétrocompatibilité)
+  const giftIds: string[] = body.giftIds || (body.giftId ? [body.giftId] : [])
+
+  if (!body.twitchChannel || giftIds.length === 0 || !body.type || !body.date) {
     throw createError({
       statusCode: 400,
-      message: 'Chaîne Twitch, cadeau, type et date sont requis',
+      message: 'Chaîne Twitch, au moins un cadeau, type et date sont requis',
     })
   }
 
@@ -44,13 +47,15 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Vérifier que le cadeau existe
-  const giftExists = db.data.gifts.some(g => g.id === body.giftId)
-  if (!giftExists) {
-    throw createError({
-      statusCode: 400,
-      message: 'Cadeau non trouvé',
-    })
+  // Vérifier que tous les cadeaux existent
+  for (const giftId of giftIds) {
+    const giftExists = db.data.gifts.some(g => g.id === giftId)
+    if (!giftExists) {
+      throw createError({
+        statusCode: 400,
+        message: `Cadeau non trouvé: ${giftId}`,
+      })
+    }
   }
 
   const existing = db.data.giveaways[giveawayIndex]!
@@ -59,11 +64,12 @@ export default defineEventHandler(async (event) => {
     createdAt: existing.createdAt,
     twitchChannel: body.twitchChannel,
     date: body.date,
-    giftId: body.giftId,
+    giftIds,
     type: body.type,
     streamElementsUrl: body.type === 'streamelements' ? body.streamElementsUrl : undefined,
     drawTime: body.drawTime || undefined,
     requireFollow: body.requireFollow ?? false,
+    closed: body.closed ?? existing.closed ?? false,
   }
 
   db.data.giveaways[giveawayIndex] = updatedGiveaway
