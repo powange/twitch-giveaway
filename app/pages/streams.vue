@@ -182,143 +182,111 @@ const parentDomain = computed(() => {
       v-else
       :class="['grid gap-4', gridClass]"
     >
-      <UCard
-        v-for="channel in selectedChannels"
-        :key="channel"
-        class="overflow-hidden"
-      >
-        <template #header>
-          <div class="flex justify-between items-center">
-            <div class="flex items-center gap-2">
-              <UIcon
-                name="i-simple-icons-twitch"
-                class="w-4 h-4 text-purple-500"
-              />
-              <span class="font-semibold">{{ channel }}</span>
-            </div>
-            <div class="flex gap-1">
-              <UButton
-                icon="i-lucide-maximize-2"
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                title="Agrandir"
-                @click="toggleFocus(channel)"
-              />
-              <UButton
-                :icon="showChat[channel] ? 'i-lucide-message-square-off' : 'i-lucide-message-square'"
-                size="xs"
-                :color="showChat[channel] ? 'primary' : 'neutral'"
-                variant="ghost"
-                :title="showChat[channel] ? 'Masquer le chat' : 'Afficher le chat'"
-                @click="toggleChat(channel)"
-              />
-              <UButton
-                icon="i-lucide-x"
-                size="xs"
-                color="error"
-                variant="ghost"
-                title="Fermer"
-                @click="removeStream(channel)"
-              />
-            </div>
-          </div>
-        </template>
-
-        <div
-          class="flex gap-2"
-          :class="showChat[channel] ? 'flex-col xl:flex-row' : ''"
-        >
-          <!-- Player -->
-          <div class="flex-1">
-            <div
-              class="relative w-full"
-              style="padding-top: 56.25%;"
-            >
-              <iframe
-                :src="`https://player.twitch.tv/?channel=${channel}&parent=${parentDomain}`"
-                class="absolute inset-0 w-full h-full"
-                allowfullscreen
-              />
-            </div>
-          </div>
-
-          <!-- Chat -->
-          <div
-            v-if="showChat[channel]"
-            class="xl:w-80 h-80 xl:h-auto"
-          >
-            <iframe
-              :src="`https://www.twitch.tv/embed/${channel}/chat?parent=${parentDomain}&darkpopout`"
-              class="w-full h-full min-h-80"
-            />
-          </div>
-        </div>
-      </UCard>
-    </div>
-
-    <!-- Overlay Focus -->
-    <Teleport to="body">
+      <!-- Backdrop quand un stream est focus -->
       <div
         v-if="focusedChannel"
-        class="fixed inset-0 z-50 bg-black/90 flex flex-col"
-        @click.self="focusedChannel = null"
+        class="fixed inset-0 z-40 bg-black/80"
+        @click="focusedChannel = null"
+      />
+
+      <div
+        v-for="channel in selectedChannels"
+        :key="channel"
+        :class="[
+          'transition-all duration-300',
+          focusedChannel === channel
+            ? 'fixed inset-4 z-50 flex flex-col'
+            : focusedChannel
+              ? 'opacity-0 pointer-events-none'
+              : ''
+        ]"
       >
-        <!-- Header -->
-        <div class="flex justify-between items-center p-4 bg-gray-900">
-          <div class="flex items-center gap-2">
-            <UIcon
-              name="i-simple-icons-twitch"
-              class="w-5 h-5 text-purple-500"
-            />
-            <span class="font-semibold text-white text-lg">{{ focusedChannel }}</span>
-          </div>
-          <div class="flex gap-2">
-            <UButton
-              :icon="showChat[focusedChannel] ? 'i-lucide-message-square-off' : 'i-lucide-message-square'"
-              size="sm"
-              :color="showChat[focusedChannel] ? 'primary' : 'neutral'"
-              variant="ghost"
-              :title="showChat[focusedChannel] ? 'Masquer le chat' : 'Afficher le chat'"
-              @click="toggleChat(focusedChannel)"
-            />
-            <UButton
-              icon="i-lucide-minimize-2"
-              size="sm"
-              color="neutral"
-              variant="ghost"
-              title="Reduire"
-              @click="focusedChannel = null"
-            />
-          </div>
-        </div>
-
-        <!-- Content -->
-        <div
-          class="flex-1 flex gap-0 overflow-hidden"
-          :class="showChat[focusedChannel] ? 'flex-col lg:flex-row' : ''"
+        <UCard
+          class="overflow-hidden h-full flex flex-col"
         >
-          <!-- Player -->
-          <div class="flex-1 relative">
-            <iframe
-              :src="`https://player.twitch.tv/?channel=${focusedChannel}&parent=${parentDomain}`"
-              class="absolute inset-0 w-full h-full"
-              allowfullscreen
-            />
-          </div>
+          <template #header>
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <UIcon
+                  name="i-simple-icons-twitch"
+                  class="w-4 h-4 text-purple-500"
+                />
+                <span class="font-semibold">{{ channel }}</span>
+              </div>
+              <div class="flex gap-1">
+                <UButton
+                  :icon="focusedChannel === channel ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  :title="focusedChannel === channel ? 'Reduire' : 'Agrandir'"
+                  @click="toggleFocus(channel)"
+                />
+                <UButton
+                  :icon="showChat[channel] ? 'i-lucide-message-square-off' : 'i-lucide-message-square'"
+                  size="xs"
+                  :color="showChat[channel] ? 'primary' : 'neutral'"
+                  variant="ghost"
+                  :title="showChat[channel] ? 'Masquer le chat' : 'Afficher le chat'"
+                  @click="toggleChat(channel)"
+                />
+                <UButton
+                  icon="i-lucide-x"
+                  size="xs"
+                  color="error"
+                  variant="ghost"
+                  title="Fermer"
+                  @click="removeStream(channel)"
+                />
+              </div>
+            </div>
+          </template>
 
-          <!-- Chat -->
           <div
-            v-if="showChat[focusedChannel]"
-            class="h-64 lg:h-auto lg:w-96"
+            :class="[
+              'flex gap-2 flex-1',
+              focusedChannel === channel
+                ? (showChat[channel] ? 'flex-col lg:flex-row' : '')
+                : (showChat[channel] ? 'flex-col xl:flex-row' : '')
+            ]"
           >
-            <iframe
-              :src="`https://www.twitch.tv/embed/${focusedChannel}/chat?parent=${parentDomain}&darkpopout`"
-              class="w-full h-full"
-            />
+            <!-- Player -->
+            <div class="flex-1 min-h-0">
+              <div
+                :class="[
+                  'relative w-full h-full',
+                  focusedChannel !== channel && 'pb-[56.25%]'
+                ]"
+              >
+                <iframe
+                  :src="`https://player.twitch.tv/?channel=${channel}&parent=${parentDomain}`"
+                  :class="[
+                    focusedChannel === channel
+                      ? 'w-full h-full'
+                      : 'absolute inset-0 w-full h-full'
+                  ]"
+                  allowfullscreen
+                />
+              </div>
+            </div>
+
+            <!-- Chat -->
+            <div
+              v-if="showChat[channel]"
+              :class="[
+                focusedChannel === channel
+                  ? 'h-64 lg:h-auto lg:w-96'
+                  : 'xl:w-80 h-80 xl:h-auto'
+              ]"
+            >
+              <iframe
+                :src="`https://www.twitch.tv/embed/${channel}/chat?parent=${parentDomain}&darkpopout`"
+                class="w-full h-full min-h-64"
+              />
+            </div>
           </div>
-        </div>
+        </UCard>
       </div>
-    </Teleport>
+    </div>
   </UContainer>
 </template>
