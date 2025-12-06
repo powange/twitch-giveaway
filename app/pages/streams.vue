@@ -59,12 +59,53 @@ function playAlertSound() {
   }
 }
 
-// Déclencher une alerte pour une chaîne
-async function triggerDrawAlert(channel: string) {
+// Modal d'alerte de tirage
+const alertModalOpen = ref(false)
+const alertModalChannel = ref<string | null>(null)
+const alertModalCommand = ref('')
+const alertModalGiveawayId = ref<string | null>(null)
+
+function openAlertModal(channel: string) {
+  alertModalChannel.value = channel
+  // Chercher le giveaway de type commande pour ce channel
+  const channelGiveaways = getChannelGiveaways(channel)
+  const commandGiveaway = channelGiveaways.find(g => g.type === 'command')
+  if (commandGiveaway) {
+    alertModalCommand.value = commandGiveaway.command || ''
+    alertModalGiveawayId.value = commandGiveaway.id
+  } else {
+    alertModalCommand.value = ''
+    alertModalGiveawayId.value = null
+  }
+  alertModalOpen.value = true
+}
+
+async function confirmAndSendAlert() {
+  if (!alertModalChannel.value) return
+
+  // Si on a une commande, mettre à jour le giveaway
+  if (alertModalGiveawayId.value && alertModalCommand.value) {
+    try {
+      await $fetch(`/api/giveaways/${alertModalGiveawayId.value}/command`, {
+        method: 'PATCH',
+        body: { command: alertModalCommand.value }
+      })
+    } catch {
+      toast.add({
+        title: 'Erreur',
+        description: 'Impossible de mettre à jour la commande',
+        color: 'error'
+      })
+      return
+    }
+  }
+
+  // Envoyer l'alerte
   try {
-    await $fetch(`/api/alert/${encodeURIComponent(channel)}`, {
+    await $fetch(`/api/alert/${encodeURIComponent(alertModalChannel.value)}`, {
       method: 'POST'
     })
+    alertModalOpen.value = false
   } catch {
     toast.add({
       title: 'Erreur',
@@ -123,6 +164,28 @@ onMounted(() => {
       selectedChannels.value = parsed.channels || []
       showChat.value = parsed.showChat || {}
     } catch { /* ignore */ }
+  }
+
+  // Confirmation avant de quitter/rafraîchir la page
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+function handleBeforeUnload(e: BeforeUnloadEvent) {
+  if (selectedChannels.value.length > 0) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
+// Confirmation pour la navigation interne (vers autre page)
+onBeforeRouteLeave(() => {
+  if (selectedChannels.value.length > 0) {
+    const answer = window.confirm('Vous avez des streams ouverts. Voulez-vous vraiment quitter cette page ?')
+    if (!answer) return false
   }
 })
 
@@ -537,7 +600,7 @@ function handleQualityChange(channel: string, quality: string) {
                 color="warning"
                 variant="ghost"
                 title="Alerter: C'est le moment du tirage !"
-                @click="triggerDrawAlert(channel)"
+                @click="openAlertModal(channel)"
               />
               <UButton
                 :icon="focusedChannel === channel ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
@@ -635,6 +698,51 @@ function handleQualityChange(channel: string, quality: string) {
               label="Supprimer"
               color="error"
               @click="confirmRemoveStream"
+            />
+          </div>
+        </UCard>
+      </template>
+    </UModal>
+
+    <!-- Modal d'alerte de tirage -->
+    <UModal v-model:open="alertModalOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <h2 class="text-xl font-semibold">
+              Alerte de tirage
+            </h2>
+          </template>
+
+          <div class="space-y-4">
+            <p>
+              Envoyer une alerte pour le stream
+              <strong>{{ alertModalChannel }}</strong> ?
+            </p>
+
+            <UFormField
+              v-if="alertModalGiveawayId"
+              label="Commande du giveaway"
+            >
+              <UInput
+                v-model="alertModalCommand"
+                placeholder="!giveaway"
+              />
+            </UFormField>
+          </div>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <UButton
+              label="Annuler"
+              color="neutral"
+              variant="outline"
+              @click="alertModalOpen = false"
+            />
+            <UButton
+              label="Envoyer l'alerte"
+              color="warning"
+              icon="i-lucide-bell-ring"
+              @click="confirmAndSendAlert"
             />
           </div>
         </UCard>
