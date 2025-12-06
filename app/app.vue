@@ -20,6 +20,12 @@ useSeoMeta({
   ogTitle: title,
   ogDescription: description
 })
+
+const navItems = [
+  { label: 'Giveaways', to: '/', icon: 'i-lucide-gift' },
+  { label: 'Cadeaux', to: '/cadeaux', icon: 'i-lucide-package' },
+  { label: 'Streams', to: '/streams', icon: 'i-lucide-tv' },
+]
 </script>
 
 <template>
@@ -32,12 +38,19 @@ useSeoMeta({
         </NuxtLink>
       </template>
 
-      <UNavigationMenu
-        :items="[
-          { label: 'Giveaways', to: '/', icon: 'i-lucide-gift' },
-          { label: 'Cadeaux', to: '/cadeaux', icon: 'i-lucide-package' },
-        ]"
-      />
+      <nav class="flex items-center gap-4">
+        <ULink
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
+          active-class="text-primary"
+          inactive-class="text-muted hover:text-foreground"
+          class="flex items-center gap-1.5 text-sm font-medium transition-colors"
+        >
+          <UIcon :name="item.icon" class="w-4 h-4" />
+          {{ item.label }}
+        </ULink>
+      </nav>
 
       <template #right>
         <UColorModeButton />
