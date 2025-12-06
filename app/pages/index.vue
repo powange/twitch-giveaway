@@ -169,13 +169,18 @@ const giveawayTypes = [
 
 function resetForm() {
   form.twitchChannel = ''
-  form.date = ''
+  form.date = getTodayDate()
   form.giftIds = []
   form.type = 'command'
   form.streamElementsUrl = ''
   form.drawTime = ''
   form.requireFollow = false
   editingId.value = null
+}
+
+function openNewGiveaway() {
+  resetForm()
+  isModalOpen.value = true
 }
 
 function editGiveaway(giveaway: Giveaway) {
@@ -344,6 +349,10 @@ function getTwitchUrl(channel: string) {
   const name = getStreamerName(channel)
   return `https://twitch.tv/${name}`
 }
+
+function getTodayDate() {
+  return new Date().toISOString().split('T')[0]
+}
 </script>
 
 <template>
@@ -357,7 +366,7 @@ function getTwitchUrl(channel: string) {
         icon="i-lucide-plus"
         label="Ajouter un giveaway"
         :disabled="!gifts?.length"
-        @click="isModalOpen = true"
+        @click="openNewGiveaway"
       />
     </div>
 
@@ -387,7 +396,7 @@ function getTwitchUrl(channel: string) {
         icon="i-lucide-plus"
         label="Ajouter un giveaway"
         :disabled="!gifts?.length"
-        @click="isModalOpen = true"
+        @click="openNewGiveaway"
       />
     </div>
 
@@ -554,10 +563,10 @@ function getTwitchUrl(channel: string) {
           </template>
 
           <form class="space-y-4" @submit.prevent="saveGiveaway">
-            <UFormField label="Chaine Twitch" required>
+            <UFormField label="URL de la chaine Twitch" required>
               <UInput
                 v-model="form.twitchChannel"
-                placeholder="nom_de_la_chaine"
+                placeholder="https://twitch.tv/nom_de_la_chaine"
                 class="w-full"
               />
             </UFormField>
