@@ -22,36 +22,46 @@ const toast = useToast()
 const { data: giveaways, refresh } = await useFetch<Giveaway[]>('/api/giveaways')
 const { data: gifts, refresh: refreshGifts } = await useFetch<Gift[]>('/api/gifts')
 
-// Rafraîchir les données à chaque visite de la page
+// Filtres par cadeau
+const selectedGifts = ref<string[]>([])
+
+// Charger et sauvegarder les filtres dans localStorage
 onMounted(() => {
   refresh()
   refreshGifts()
+
+  // Charger les filtres depuis localStorage
+  const saved = localStorage.getItem('giveawayFilters')
+  if (saved) {
+    try {
+      selectedGifts.value = JSON.parse(saved)
+    }
+    catch {}
+  }
 })
 
-// Filtres par chaîne Twitch
-const selectedChannels = ref<string[]>([])
+// Sauvegarder les filtres à chaque modification
+watch(selectedGifts, () => {
+  localStorage.setItem('giveawayFilters', JSON.stringify(selectedGifts.value))
+}, { deep: true })
 
-const availableChannels = computed(() => {
-  if (!giveaways.value) return []
-  const channels = giveaways.value.map(g => getStreamerName(g.twitchChannel))
-  return [...new Set(channels)]
+const availableGifts = computed(() => {
+  return gifts.value || []
 })
 
 const filteredGiveaways = computed(() => {
   if (!giveaways.value) return []
-  if (selectedChannels.value.length === 0) return giveaways.value
-  return giveaways.value.filter(g =>
-    selectedChannels.value.includes(getStreamerName(g.twitchChannel))
-  )
+  if (selectedGifts.value.length === 0) return giveaways.value
+  return giveaways.value.filter(g => selectedGifts.value.includes(g.giftId))
 })
 
-function toggleChannelFilter(channel: string) {
-  const index = selectedChannels.value.indexOf(channel)
+function toggleGiftFilter(giftId: string) {
+  const index = selectedGifts.value.indexOf(giftId)
   if (index === -1) {
-    selectedChannels.value.push(channel)
+    selectedGifts.value.push(giftId)
   }
   else {
-    selectedChannels.value.splice(index, 1)
+    selectedGifts.value.splice(index, 1)
   }
 }
 
@@ -248,28 +258,28 @@ function getTwitchUrl(channel: string) {
     </div>
 
     <template v-else>
-      <!-- Filtres par chaîne -->
-      <UCard v-if="availableChannels.length > 1" class="mb-6">
+      <!-- Filtres par cadeau -->
+      <UCard v-if="availableGifts.length > 0" class="mb-6">
         <div class="flex items-center gap-3 flex-wrap">
-          <span class="text-sm font-medium text-muted">Filtrer par streamer :</span>
+          <span class="text-sm font-medium text-muted">Filtrer par cadeau :</span>
           <UButton
-            v-for="channel in availableChannels"
-            :key="channel"
-            :color="selectedChannels.includes(channel) ? 'primary' : 'neutral'"
-            :variant="selectedChannels.includes(channel) ? 'solid' : 'outline'"
+            v-for="gift in availableGifts"
+            :key="gift.id"
+            :color="selectedGifts.includes(gift.id) ? 'primary' : 'neutral'"
+            :variant="selectedGifts.includes(gift.id) ? 'solid' : 'outline'"
             size="xs"
-            @click="toggleChannelFilter(channel)"
+            @click="toggleGiftFilter(gift.id)"
           >
-            <UIcon name="i-simple-icons-twitch" class="w-3 h-3 mr-1" />
-            {{ channel }}
+            <img :src="gift.image" :alt="gift.title" class="w-4 h-4 object-contain mr-1">
+            {{ gift.title }}
           </UButton>
           <UButton
-            v-if="selectedChannels.length > 0"
+            v-if="selectedGifts.length > 0"
             color="neutral"
             variant="ghost"
             size="xs"
             label="Effacer"
-            @click="selectedChannels = []"
+            @click="selectedGifts = []"
           />
         </div>
       </UCard>
