@@ -198,6 +198,23 @@ function getGift(giftId: string): Gift | undefined {
   return gifts.value?.find(g => g.id === giftId)
 }
 
+async function copyCommand(command: string) {
+  try {
+    await navigator.clipboard.writeText(command)
+    toast.add({
+      title: 'Copie',
+      description: 'Commande copiee dans le presse-papier',
+      color: 'success'
+    })
+  } catch {
+    toast.add({
+      title: 'Erreur',
+      description: 'Impossible de copier la commande',
+      color: 'error'
+    })
+  }
+}
+
 function isGiveawayClosed(giveaway: Giveaway): boolean {
   if (giveaway.closed) return true
   // Fermeture automatique après 2 jours
@@ -568,6 +585,14 @@ function getTodayDate() {
                   class="w-4 h-4"
                 />
                 <code class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-xs">{{ giveaway.command }}</code>
+                <UButton
+                  icon="i-lucide-copy"
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  title="Copier la commande"
+                  @click="copyCommand(giveaway.command)"
+                />
               </div>
 
               <div
