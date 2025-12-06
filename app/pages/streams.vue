@@ -10,6 +10,7 @@ const giveaways = computed(() => isInitialized.value ? sseGiveaways.value : init
 
 const selectedChannels = ref<string[]>([])
 const showChat = ref<Record<string, boolean>>({})
+const focusedChannel = ref<string | null>(null)
 
 onMounted(() => {
   // Charger depuis localStorage
@@ -19,8 +20,7 @@ onMounted(() => {
       const parsed = JSON.parse(saved)
       selectedChannels.value = parsed.channels || []
       showChat.value = parsed.showChat || {}
-    }
-    catch {}
+    } catch { /* ignore invalid JSON */ }
   }
 })
 
@@ -28,7 +28,7 @@ onMounted(() => {
 watch([selectedChannels, showChat], () => {
   localStorage.setItem('selectedStreams', JSON.stringify({
     channels: selectedChannels.value,
-    showChat: showChat.value,
+    showChat: showChat.value
   }))
 }, { deep: true })
 
@@ -60,15 +60,19 @@ function getStreamerName(channel: string): string {
   return match?.[1] ?? channel
 }
 
+function removeChatState(channel: string) {
+  const { [channel]: _, ...rest } = showChat.value
+  showChat.value = rest
+}
+
 function toggleChannel(channel: string) {
   const index = selectedChannels.value.indexOf(channel)
   if (index === -1) {
     selectedChannels.value.push(channel)
     showChat.value[channel] = false
-  }
-  else {
+  } else {
     selectedChannels.value.splice(index, 1)
-    delete showChat.value[channel]
+    removeChatState(channel)
   }
 }
 
@@ -80,8 +84,15 @@ function removeStream(channel: string) {
   const index = selectedChannels.value.indexOf(channel)
   if (index !== -1) {
     selectedChannels.value.splice(index, 1)
-    delete showChat.value[channel]
+    removeChatState(channel)
+    if (focusedChannel.value === channel) {
+      focusedChannel.value = null
+    }
   }
+}
+
+function toggleFocus(channel: string) {
+  focusedChannel.value = focusedChannel.value === channel ? null : channel
 }
 
 // Calculer la grille en fonction du nombre de streams
@@ -105,22 +116,34 @@ const parentDomain = computed(() => {
   <UContainer class="py-8">
     <div class="flex justify-between items-center mb-8">
       <div>
-        <h1 class="text-3xl font-bold">Multi-Stream</h1>
-        <p class="text-muted mt-1">Regardez plusieurs streams en simultane</p>
+        <h1 class="text-3xl font-bold">
+          Multi-Stream
+        </h1>
+        <p class="text-muted mt-1">
+          Regardez plusieurs streams en simultane
+        </p>
       </div>
     </div>
 
     <!-- Selection des chaines -->
     <UCard class="mb-6">
       <template #header>
-        <h2 class="font-semibold">Selectionner les chaines</h2>
+        <h2 class="font-semibold">
+          Selectionner les chaines
+        </h2>
       </template>
 
-      <div v-if="!availableChannels.length" class="text-center py-4 text-muted">
+      <div
+        v-if="!availableChannels.length"
+        class="text-center py-4 text-muted"
+      >
         Aucune chaine disponible. Ajoutez d'abord des giveaways.
       </div>
 
-      <div v-else class="flex flex-wrap gap-2">
+      <div
+        v-else
+        class="flex flex-wrap gap-2"
+      >
         <UButton
           v-for="channel in availableChannels"
           :key="channel"
@@ -129,28 +152,59 @@ const parentDomain = computed(() => {
           size="sm"
           @click="toggleChannel(channel)"
         >
-          <UIcon name="i-simple-icons-twitch" class="w-4 h-4 mr-1" />
+          <UIcon
+            name="i-simple-icons-twitch"
+            class="w-4 h-4 mr-1"
+          />
           {{ channel }}
         </UButton>
       </div>
     </UCard>
 
     <!-- Streams -->
-    <div v-if="!selectedChannels.length" class="text-center py-16">
-      <UIcon name="i-lucide-tv" class="w-16 h-16 text-muted mx-auto mb-4" />
-      <h2 class="text-xl font-semibold mb-2">Aucun stream selectionne</h2>
-      <p class="text-muted">Selectionnez des chaines ci-dessus pour les regarder</p>
+    <div
+      v-if="!selectedChannels.length"
+      class="text-center py-16"
+    >
+      <UIcon
+        name="i-lucide-tv"
+        class="w-16 h-16 text-muted mx-auto mb-4"
+      />
+      <h2 class="text-xl font-semibold mb-2">
+        Aucun stream selectionne
+      </h2>
+      <p class="text-muted">
+        Selectionnez des chaines ci-dessus pour les regarder
+      </p>
     </div>
 
-    <div v-else :class="['grid gap-4', gridClass]">
-      <UCard v-for="channel in selectedChannels" :key="channel" class="overflow-hidden">
+    <div
+      v-else
+      :class="['grid gap-4', gridClass]"
+    >
+      <UCard
+        v-for="channel in selectedChannels"
+        :key="channel"
+        class="overflow-hidden"
+      >
         <template #header>
           <div class="flex justify-between items-center">
             <div class="flex items-center gap-2">
-              <UIcon name="i-simple-icons-twitch" class="w-4 h-4 text-purple-500" />
+              <UIcon
+                name="i-simple-icons-twitch"
+                class="w-4 h-4 text-purple-500"
+              />
               <span class="font-semibold">{{ channel }}</span>
             </div>
             <div class="flex gap-1">
+              <UButton
+                icon="i-lucide-maximize-2"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                title="Agrandir"
+                @click="toggleFocus(channel)"
+              />
               <UButton
                 :icon="showChat[channel] ? 'i-lucide-message-square-off' : 'i-lucide-message-square'"
                 size="xs"
@@ -171,10 +225,16 @@ const parentDomain = computed(() => {
           </div>
         </template>
 
-        <div class="flex gap-2" :class="showChat[channel] ? 'flex-col xl:flex-row' : ''">
+        <div
+          class="flex gap-2"
+          :class="showChat[channel] ? 'flex-col xl:flex-row' : ''"
+        >
           <!-- Player -->
           <div class="flex-1">
-            <div class="relative w-full" style="padding-top: 56.25%;">
+            <div
+              class="relative w-full"
+              style="padding-top: 56.25%;"
+            >
               <iframe
                 :src="`https://player.twitch.tv/?channel=${channel}&parent=${parentDomain}`"
                 class="absolute inset-0 w-full h-full"
@@ -184,7 +244,10 @@ const parentDomain = computed(() => {
           </div>
 
           <!-- Chat -->
-          <div v-if="showChat[channel]" class="xl:w-80 h-80 xl:h-auto">
+          <div
+            v-if="showChat[channel]"
+            class="xl:w-80 h-80 xl:h-auto"
+          >
             <iframe
               :src="`https://www.twitch.tv/embed/${channel}/chat?parent=${parentDomain}&darkpopout`"
               class="w-full h-full min-h-80"
@@ -193,5 +256,69 @@ const parentDomain = computed(() => {
         </div>
       </UCard>
     </div>
+
+    <!-- Overlay Focus -->
+    <Teleport to="body">
+      <div
+        v-if="focusedChannel"
+        class="fixed inset-0 z-50 bg-black/90 flex flex-col"
+        @click.self="focusedChannel = null"
+      >
+        <!-- Header -->
+        <div class="flex justify-between items-center p-4 bg-gray-900">
+          <div class="flex items-center gap-2">
+            <UIcon
+              name="i-simple-icons-twitch"
+              class="w-5 h-5 text-purple-500"
+            />
+            <span class="font-semibold text-white text-lg">{{ focusedChannel }}</span>
+          </div>
+          <div class="flex gap-2">
+            <UButton
+              :icon="showChat[focusedChannel] ? 'i-lucide-message-square-off' : 'i-lucide-message-square'"
+              size="sm"
+              :color="showChat[focusedChannel] ? 'primary' : 'neutral'"
+              variant="ghost"
+              :title="showChat[focusedChannel] ? 'Masquer le chat' : 'Afficher le chat'"
+              @click="toggleChat(focusedChannel)"
+            />
+            <UButton
+              icon="i-lucide-minimize-2"
+              size="sm"
+              color="neutral"
+              variant="ghost"
+              title="Reduire"
+              @click="focusedChannel = null"
+            />
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div
+          class="flex-1 flex gap-0 overflow-hidden"
+          :class="showChat[focusedChannel] ? 'flex-col lg:flex-row' : ''"
+        >
+          <!-- Player -->
+          <div class="flex-1 relative">
+            <iframe
+              :src="`https://player.twitch.tv/?channel=${focusedChannel}&parent=${parentDomain}`"
+              class="absolute inset-0 w-full h-full"
+              allowfullscreen
+            />
+          </div>
+
+          <!-- Chat -->
+          <div
+            v-if="showChat[focusedChannel]"
+            class="h-64 lg:h-auto lg:w-96"
+          >
+            <iframe
+              :src="`https://www.twitch.tv/embed/${focusedChannel}/chat?parent=${parentDomain}&darkpopout`"
+              class="w-full h-full"
+            />
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </UContainer>
 </template>
