@@ -12,7 +12,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   routeRules: {
-    '/': { prerender: true }
+    // SSR par défaut pour les pages dynamiques
   },
 
   compatibilityDate: '2025-01-15',

@@ -139,9 +139,11 @@ watch(drawAlert, (alert) => {
   clearAlert()
 })
 
-// Données initiales via useFetch
-const { data: initialGiveaways } = await useFetch('/api/giveaways')
-const { data: initialGifts } = await useFetch('/api/gifts')
+// Données initiales via useFetch (en parallèle)
+const [{ data: initialGiveaways }, { data: initialGifts }] = await Promise.all([
+  useFetch('/api/giveaways'),
+  useFetch('/api/gifts')
+])
 
 // Utiliser les données SSE une fois initialisé, sinon les données initiales
 const giveaways = computed(() => isInitialized.value ? sseGiveaways.value : (initialGiveaways.value || []))

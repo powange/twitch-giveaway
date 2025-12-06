@@ -24,13 +24,28 @@ const toast = useToast()
 // SSE pour les mises à jour en temps réel
 const { giveaways: sseGiveaways, gifts: sseGifts, isInitialized } = useSSE()
 
-// Données initiales via useFetch, puis mises à jour via SSE
-const { data: initialGiveaways } = await useFetch<Giveaway[]>('/api/giveaways')
-const { data: initialGifts } = await useFetch<Gift[]>('/api/gifts')
+// Données initiales via useAsyncData (un seul appel payload), puis mises à jour via SSE
+const { data: initialData } = await useAsyncData('home-data', async () => {
+  const [giveaways, gifts] = await Promise.all([
+    $fetch<Giveaway[]>('/api/giveaways'),
+    $fetch<Gift[]>('/api/gifts')
+  ])
+  return { giveaways, gifts }
+}, { default: () => ({ giveaways: [] as Giveaway[], gifts: [] as Gift[] }) })
 
-// Utiliser les données SSE une fois initialisé, sinon les données initiales
-const giveaways = computed(() => isInitialized.value ? sseGiveaways.value : (initialGiveaways.value || []))
-const gifts = computed(() => isInitialized.value ? sseGifts.value : (initialGifts.value || []))
+// Utiliser les données SSE si disponibles, sinon les données initiales
+const giveaways = computed(() => {
+  if (isInitialized.value) {
+    return sseGiveaways.value
+  }
+  return initialData.value.giveaways
+})
+const gifts = computed(() => {
+  if (isInitialized.value) {
+    return sseGifts.value
+  }
+  return initialData.value.gifts
+})
 
 // Filtres
 const selectedGifts = ref<string[]>([])
