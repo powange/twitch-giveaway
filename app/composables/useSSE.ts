@@ -10,6 +10,7 @@ interface Giveaway {
   date: string
   giftIds: string[]
   type: 'command' | 'ticket' | 'streamelements'
+  command?: string
   streamElementsUrl?: string
   drawTime?: string
   requireFollow: boolean

@@ -11,6 +11,7 @@ interface Giveaway {
   date: string
   giftIds: string[]
   type: 'command' | 'ticket' | 'streamelements'
+  command?: string
   streamElementsUrl?: string
   drawTime?: string
   requireFollow: boolean
@@ -151,6 +152,7 @@ const form = reactive({
   date: '',
   giftIds: [] as string[],
   type: 'command' as 'command' | 'ticket' | 'streamelements',
+  command: '',
   streamElementsUrl: '',
   drawTime: '',
   requireFollow: false
@@ -167,6 +169,7 @@ function resetForm() {
   form.date = getTodayDate()
   form.giftIds = []
   form.type = 'command'
+  form.command = ''
   form.streamElementsUrl = ''
   form.drawTime = ''
   form.requireFollow = false
@@ -184,6 +187,7 @@ function editGiveaway(giveaway: Giveaway) {
   form.date = giveaway.date
   form.giftIds = [...giveaway.giftIds]
   form.type = giveaway.type
+  form.command = giveaway.command || ''
   form.streamElementsUrl = giveaway.streamElementsUrl || ''
   form.drawTime = giveaway.drawTime || ''
   form.requireFollow = giveaway.requireFollow
@@ -541,7 +545,7 @@ function getTodayDate() {
 
             <!-- Infos supplementaires -->
             <div
-              v-if="giveaway.drawTime || giveaway.streamElementsUrl"
+              v-if="giveaway.drawTime || giveaway.command || giveaway.streamElementsUrl"
               class="space-y-1 text-sm text-muted"
             >
               <div
@@ -553,6 +557,17 @@ function getTodayDate() {
                   class="w-4 h-4"
                 />
                 <span>Tirage a {{ giveaway.drawTime }}</span>
+              </div>
+
+              <div
+                v-if="giveaway.command"
+                class="flex items-center gap-2"
+              >
+                <UIcon
+                  name="i-lucide-terminal"
+                  class="w-4 h-4"
+                />
+                <code class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-xs">{{ giveaway.command }}</code>
               </div>
 
               <div
@@ -671,6 +686,17 @@ function getTodayDate() {
               <URadioGroup
                 v-model="form.type"
                 :items="giveawayTypes"
+              />
+            </UFormField>
+
+            <UFormField
+              v-if="form.type === 'command'"
+              label="Commande chat"
+            >
+              <UInput
+                v-model="form.command"
+                placeholder="!giveaway"
+                class="w-full"
               />
             </UFormField>
 

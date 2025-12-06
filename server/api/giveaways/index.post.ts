@@ -47,6 +47,7 @@ export default defineEventHandler(async (event) => {
     date: body.date,
     giftIds,
     type: body.type,
+    command: body.type === 'command' ? body.command : undefined,
     streamElementsUrl: body.type === 'streamelements' ? body.streamElementsUrl : undefined,
     drawTime: body.drawTime || undefined,
     requireFollow: body.requireFollow ?? false,
