@@ -44,14 +44,12 @@ onMounted(() => {
       if (Array.isArray(parsed)) {
         // Ancien format (juste les cadeaux)
         selectedGifts.value = parsed
-      }
-      else {
+      } else {
         // Nouveau format
         selectedGifts.value = parsed.gifts || []
         selectedStatuses.value = parsed.statuses || ['open']
       }
-    }
-    catch {}
+    } catch { /* ignore invalid JSON */ }
   }
 })
 
@@ -59,7 +57,7 @@ onMounted(() => {
 watch([selectedGifts, selectedStatuses], () => {
   localStorage.setItem('giveawayFilters', JSON.stringify({
     gifts: selectedGifts.value,
-    statuses: selectedStatuses.value,
+    statuses: selectedStatuses.value
   }))
 }, { deep: true })
 
@@ -67,8 +65,7 @@ function toggleStatusFilter(status: 'open' | 'closed') {
   const index = selectedStatuses.value.indexOf(status)
   if (index === -1) {
     selectedStatuses.value.push(status)
-  }
-  else if (selectedStatuses.value.length > 1) {
+  } else if (selectedStatuses.value.length > 1) {
     // Ne pas permettre de tout désélectionner
     selectedStatuses.value.splice(index, 1)
   }
@@ -115,8 +112,7 @@ function toggleGiftFilter(giftId: string) {
   const index = selectedGifts.value.indexOf(giftId)
   if (index === -1) {
     selectedGifts.value.push(giftId)
-  }
-  else {
+  } else {
     selectedGifts.value.splice(index, 1)
   }
 }
@@ -141,8 +137,7 @@ async function executeConfirmedAction() {
 
   if (confirmAction.value === 'delete') {
     await doDeleteGiveaway(confirmGiveaway.value.id)
-  }
-  else if (confirmAction.value === 'close') {
+  } else if (confirmAction.value === 'close') {
     await doToggleGiveawayClosed(confirmGiveaway.value)
   }
 
@@ -158,13 +153,13 @@ const form = reactive({
   type: 'command' as 'command' | 'ticket' | 'streamelements',
   streamElementsUrl: '',
   drawTime: '',
-  requireFollow: false,
+  requireFollow: false
 })
 
 const giveawayTypes = [
   { label: 'Commande', value: 'command' },
   { label: 'Ticket', value: 'ticket' },
-  { label: 'StreamElements', value: 'streamelements' },
+  { label: 'StreamElements', value: 'streamelements' }
 ]
 
 function resetForm() {
@@ -219,20 +214,19 @@ async function doToggleGiveawayClosed(giveaway: Giveaway) {
       method: 'PUT',
       body: {
         ...giveaway,
-        closed: !giveaway.closed,
-      },
+        closed: !giveaway.closed
+      }
     })
     toast.add({
       title: 'Succes',
       description: giveaway.closed ? 'Giveaway rouvert' : 'Giveaway clos',
-      color: 'success',
+      color: 'success'
     })
-  }
-  catch {
+  } catch {
     toast.add({
       title: 'Erreur',
       description: 'Impossible de modifier le statut',
-      color: 'error',
+      color: 'error'
     })
   }
 }
@@ -241,8 +235,7 @@ function toggleFormGift(giftId: string) {
   const index = form.giftIds.indexOf(giftId)
   if (index === -1) {
     form.giftIds.push(giftId)
-  }
-  else {
+  } else {
     form.giftIds.splice(index, 1)
   }
 }
@@ -252,7 +245,7 @@ async function saveGiveaway() {
     toast.add({
       title: 'Erreur',
       description: 'La chaine Twitch et la date sont requis',
-      color: 'error',
+      color: 'error'
     })
     return
   }
@@ -265,42 +258,39 @@ async function saveGiveaway() {
         method: 'PUT',
         body: {
           ...form,
-          drawTime: form.drawTime || undefined,
-        },
+          drawTime: form.drawTime || undefined
+        }
       })
       toast.add({
         title: 'Succes',
         description: 'Giveaway modifie avec succes',
-        color: 'success',
+        color: 'success'
       })
-    }
-    else {
+    } else {
       // Mode création
       await $fetch('/api/giveaways', {
         method: 'POST',
         body: {
           ...form,
-          drawTime: form.drawTime || undefined,
-        },
+          drawTime: form.drawTime || undefined
+        }
       })
       toast.add({
         title: 'Succes',
         description: 'Giveaway ajoute avec succes',
-        color: 'success',
+        color: 'success'
       })
     }
     resetForm()
     isModalOpen.value = false
     // SSE met à jour automatiquement les données
-  }
-  catch {
+  } catch {
     toast.add({
       title: 'Erreur',
       description: editingId.value ? 'Impossible de modifier le giveaway' : 'Impossible d\'ajouter le giveaway',
-      color: 'error',
+      color: 'error'
     })
-  }
-  finally {
+  } finally {
     isLoading.value = false
   }
 }
@@ -312,20 +302,19 @@ function deleteGiveaway(giveaway: Giveaway) {
 async function doDeleteGiveaway(id: string) {
   try {
     await $fetch(`/api/giveaways/${id}`, {
-      method: 'DELETE',
+      method: 'DELETE'
     })
     toast.add({
       title: 'Succes',
       description: 'Giveaway supprime',
-      color: 'success',
+      color: 'success'
     })
     // SSE met à jour automatiquement les données
-  }
-  catch {
+  } catch {
     toast.add({
       title: 'Erreur',
       description: 'Impossible de supprimer le giveaway',
-      color: 'error',
+      color: 'error'
     })
   }
 }
@@ -335,7 +324,7 @@ function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'long',
-    year: 'numeric',
+    year: 'numeric'
   })
 }
 
@@ -359,8 +348,12 @@ function getTodayDate() {
   <UContainer class="py-8">
     <div class="flex justify-between items-center mb-8">
       <div>
-        <h1 class="text-3xl font-bold">Giveaways Twitch</h1>
-        <p class="text-muted mt-1">Gerez vos giveaways en un seul endroit</p>
+        <h1 class="text-3xl font-bold">
+          Giveaways Twitch
+        </h1>
+        <p class="text-muted mt-1">
+          Gerez vos giveaways en un seul endroit
+        </p>
       </div>
       <UButton
         icon="i-lucide-plus"
@@ -388,10 +381,20 @@ function getTodayDate() {
       </template>
     </UAlert>
 
-    <div v-if="!giveaways?.length" class="text-center py-16">
-      <UIcon name="i-lucide-gift" class="w-16 h-16 text-muted mx-auto mb-4" />
-      <h2 class="text-xl font-semibold mb-2">Aucun giveaway</h2>
-      <p class="text-muted mb-4">Commencez par ajouter votre premier giveaway</p>
+    <div
+      v-if="!giveaways?.length"
+      class="text-center py-16"
+    >
+      <UIcon
+        name="i-lucide-gift"
+        class="w-16 h-16 text-muted mx-auto mb-4"
+      />
+      <h2 class="text-xl font-semibold mb-2">
+        Aucun giveaway
+      </h2>
+      <p class="text-muted mb-4">
+        Commencez par ajouter votre premier giveaway
+      </p>
       <UButton
         icon="i-lucide-plus"
         label="Ajouter un giveaway"
@@ -426,7 +429,10 @@ function getTodayDate() {
           </div>
 
           <!-- Filtre par cadeau -->
-          <div v-if="availableGifts.length > 0" class="flex items-center gap-3 flex-wrap">
+          <div
+            v-if="availableGifts.length > 0"
+            class="flex items-center gap-3 flex-wrap"
+          >
             <span class="text-sm font-medium text-muted">Cadeau :</span>
             <UButton
               v-for="gift in availableGifts"
@@ -436,7 +442,11 @@ function getTodayDate() {
               size="xs"
               @click="toggleGiftFilter(gift.id)"
             >
-              <img :src="gift.image" :alt="gift.title" class="w-4 h-4 object-contain mr-1">
+              <img
+                :src="gift.image"
+                :alt="gift.title"
+                class="w-4 h-4 object-contain mr-1"
+              >
               {{ gift.title }}
             </UButton>
             <UButton
@@ -452,121 +462,170 @@ function getTodayDate() {
       </UCard>
 
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <UCard v-for="giveaway in filteredGiveaways" :key="giveaway.id" :class="{ 'opacity-60': isGiveawayClosed(giveaway) }">
-        <template #header>
-          <div class="flex justify-between items-start">
-            <div>
-              <div class="flex items-center gap-2">
-                <UIcon name="i-simple-icons-twitch" class="w-5 h-5 text-purple-500" />
-                <a
-                  :href="getTwitchUrl(giveaway.twitchChannel)"
-                  target="_blank"
-                  class="font-semibold text-primary hover:underline"
+        <UCard
+          v-for="giveaway in filteredGiveaways"
+          :key="giveaway.id"
+          :class="{ 'opacity-60': isGiveawayClosed(giveaway) }"
+        >
+          <template #header>
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="flex items-center gap-2">
+                  <UIcon
+                    name="i-simple-icons-twitch"
+                    class="w-5 h-5 text-purple-500"
+                  />
+                  <a
+                    :href="getTwitchUrl(giveaway.twitchChannel)"
+                    target="_blank"
+                    class="font-semibold text-primary hover:underline"
+                  >
+                    {{ getStreamerName(giveaway.twitchChannel) }}
+                  </a>
+                </div>
+                <div class="text-sm text-muted mt-1">
+                  {{ formatDate(giveaway.date) }}
+                </div>
+              </div>
+              <UBadge
+                :color="isGiveawayClosed(giveaway) ? 'error' : 'success'"
+                size="xs"
+              >
+                {{ isGiveawayClosed(giveaway) ? 'Clos' : 'En cours' }}
+              </UBadge>
+            </div>
+          </template>
+
+          <div class="space-y-3">
+            <!-- Cadeaux -->
+            <div
+              v-if="giveaway.giftIds.length > 0"
+              class="flex flex-wrap gap-4"
+            >
+              <div
+                v-for="giftId in giveaway.giftIds"
+                :key="giftId"
+                class="flex items-center gap-2"
+              >
+                <img
+                  :src="getGift(giftId)?.image"
+                  :alt="getGift(giftId)?.title"
+                  class="w-12 h-12 object-contain"
                 >
-                  {{ getStreamerName(giveaway.twitchChannel) }}
+                <span class="font-medium">{{ getGift(giftId)?.title || 'Inconnu' }}</span>
+              </div>
+            </div>
+            <div
+              v-else
+              class="text-sm text-muted italic"
+            >
+              Aucun cadeau defini
+            </div>
+
+            <!-- Badges -->
+            <div class="flex gap-1 flex-wrap">
+              <UBadge
+                :color="giveaway.type === 'command' ? 'primary' : giveaway.type === 'ticket' ? 'info' : 'warning'"
+                size="xs"
+              >
+                {{ giveaway.type === 'command' ? 'Commande' : giveaway.type === 'ticket' ? 'Ticket' : 'StreamElements' }}
+              </UBadge>
+              <UBadge
+                v-if="giveaway.requireFollow"
+                color="neutral"
+                size="xs"
+              >
+                Follow requis
+              </UBadge>
+            </div>
+
+            <!-- Infos supplementaires -->
+            <div
+              v-if="giveaway.drawTime || giveaway.streamElementsUrl"
+              class="space-y-1 text-sm text-muted"
+            >
+              <div
+                v-if="giveaway.drawTime"
+                class="flex items-center gap-2"
+              >
+                <UIcon
+                  name="i-lucide-clock"
+                  class="w-4 h-4"
+                />
+                <span>Tirage a {{ giveaway.drawTime }}</span>
+              </div>
+
+              <div
+                v-if="giveaway.streamElementsUrl"
+                class="flex items-center gap-2"
+              >
+                <UIcon
+                  name="i-lucide-external-link"
+                  class="w-4 h-4"
+                />
+                <a
+                  :href="giveaway.streamElementsUrl"
+                  target="_blank"
+                  class="text-primary hover:underline truncate"
+                >
+                  StreamElements
                 </a>
               </div>
-              <div class="text-sm text-muted mt-1">
-                {{ formatDate(giveaway.date) }}
-              </div>
-            </div>
-            <UBadge :color="isGiveawayClosed(giveaway) ? 'error' : 'success'" size="xs">
-              {{ isGiveawayClosed(giveaway) ? 'Clos' : 'En cours' }}
-            </UBadge>
-          </div>
-        </template>
-
-        <div class="space-y-3">
-          <!-- Cadeaux -->
-          <div v-if="giveaway.giftIds.length > 0" class="flex flex-wrap gap-4">
-            <div
-              v-for="giftId in giveaway.giftIds"
-              :key="giftId"
-              class="flex items-center gap-2"
-            >
-              <img
-                :src="getGift(giftId)?.image"
-                :alt="getGift(giftId)?.title"
-                class="w-12 h-12 object-contain"
-              >
-              <span class="font-medium">{{ getGift(giftId)?.title || 'Inconnu' }}</span>
             </div>
           </div>
-          <div v-else class="text-sm text-muted italic">
-            Aucun cadeau defini
-          </div>
 
-          <!-- Badges -->
-          <div class="flex gap-1 flex-wrap">
-            <UBadge :color="giveaway.type === 'command' ? 'primary' : giveaway.type === 'ticket' ? 'info' : 'warning'" size="xs">
-              {{ giveaway.type === 'command' ? 'Commande' : giveaway.type === 'ticket' ? 'Ticket' : 'StreamElements' }}
-            </UBadge>
-            <UBadge v-if="giveaway.requireFollow" color="neutral" size="xs">
-              Follow requis
-            </UBadge>
-          </div>
-
-          <!-- Infos supplementaires -->
-          <div v-if="giveaway.drawTime || giveaway.streamElementsUrl" class="space-y-1 text-sm text-muted">
-            <div v-if="giveaway.drawTime" class="flex items-center gap-2">
-              <UIcon name="i-lucide-clock" class="w-4 h-4" />
-              <span>Tirage a {{ giveaway.drawTime }}</span>
+          <template #footer>
+            <div class="flex justify-end gap-1">
+              <UButton
+                :icon="giveaway.closed ? 'i-lucide-play' : 'i-lucide-check'"
+                :color="giveaway.closed ? 'success' : 'warning'"
+                variant="ghost"
+                size="xs"
+                :label="giveaway.closed ? 'Rouvrir' : 'Clore'"
+                @click="toggleGiveawayClosed(giveaway)"
+              />
+              <UButton
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                label="Modifier"
+                @click="editGiveaway(giveaway)"
+              />
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                label="Supprimer"
+                @click="deleteGiveaway(giveaway)"
+              />
             </div>
-
-            <div v-if="giveaway.streamElementsUrl" class="flex items-center gap-2">
-              <UIcon name="i-lucide-external-link" class="w-4 h-4" />
-              <a
-                :href="giveaway.streamElementsUrl"
-                target="_blank"
-                class="text-primary hover:underline truncate"
-              >
-                StreamElements
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <template #footer>
-          <div class="flex justify-end gap-1">
-            <UButton
-              :icon="giveaway.closed ? 'i-lucide-play' : 'i-lucide-check'"
-              :color="giveaway.closed ? 'success' : 'warning'"
-              variant="ghost"
-              size="xs"
-              :label="giveaway.closed ? 'Rouvrir' : 'Clore'"
-              @click="toggleGiveawayClosed(giveaway)"
-            />
-            <UButton
-              icon="i-lucide-pencil"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              label="Modifier"
-              @click="editGiveaway(giveaway)"
-            />
-            <UButton
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              label="Supprimer"
-              @click="deleteGiveaway(giveaway)"
-            />
-          </div>
-        </template>
-      </UCard>
+          </template>
+        </UCard>
       </div>
     </template>
 
-    <UModal v-model:open="isModalOpen" @close="resetForm">
+    <UModal
+      v-model:open="isModalOpen"
+      @close="resetForm"
+    >
       <template #content>
         <UCard>
           <template #header>
-            <h2 class="text-xl font-semibold">{{ editingId ? 'Modifier le Giveaway' : 'Nouveau Giveaway' }}</h2>
+            <h2 class="text-xl font-semibold">
+              {{ editingId ? 'Modifier le Giveaway' : 'Nouveau Giveaway' }}
+            </h2>
           </template>
 
-          <form class="space-y-4" @submit.prevent="saveGiveaway">
-            <UFormField label="URL de la chaine Twitch" required>
+          <form
+            class="space-y-4"
+            @submit.prevent="saveGiveaway"
+          >
+            <UFormField
+              label="URL de la chaine Twitch"
+              required
+            >
               <UInput
                 v-model="form.twitchChannel"
                 placeholder="https://twitch.tv/nom_de_la_chaine"
@@ -574,7 +633,10 @@ function getTodayDate() {
               />
             </UFormField>
 
-            <UFormField label="Date du giveaway" required>
+            <UFormField
+              label="Date du giveaway"
+              required
+            >
               <UInput
                 v-model="form.date"
                 type="date"
@@ -592,20 +654,31 @@ function getTodayDate() {
                   size="sm"
                   @click="toggleFormGift(gift.id)"
                 >
-                  <img :src="gift.image" :alt="gift.title" class="w-4 h-4 object-contain mr-1">
+                  <img
+                    :src="gift.image"
+                    :alt="gift.title"
+                    class="w-4 h-4 object-contain mr-1"
+                  >
                   {{ gift.title }}
                 </UButton>
               </div>
             </UFormField>
 
-            <UFormField label="Type de giveaway" required>
+            <UFormField
+              label="Type de giveaway"
+              required
+            >
               <URadioGroup
                 v-model="form.type"
                 :items="giveawayTypes"
               />
             </UFormField>
 
-            <UFormField v-if="form.type === 'streamelements'" label="URL StreamElements" required>
+            <UFormField
+              v-if="form.type === 'streamelements'"
+              label="URL StreamElements"
+              required
+            >
               <UInput
                 v-model="form.streamElementsUrl"
                 placeholder="https://streamelements.com/..."
