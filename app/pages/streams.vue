@@ -1,21 +1,15 @@
 <script setup lang="ts">
-interface Giveaway {
-  id: string
-  twitchChannel: string
-  date: string
-  giftId: string
-  type: 'command' | 'ticket'
-  drawTime?: string
-  requireFollow: boolean
-  createdAt: string
-}
+// SSE pour les mises à jour en temps réel
+const { giveaways: sseGiveaways, isInitialized } = useSSE()
 
-const { data: giveaways, refresh } = await useFetch<Giveaway[]>('/api/giveaways')
+// Données initiales via useFetch
+const { data: initialGiveaways } = await useFetch('/api/giveaways')
+
+// Utiliser les données SSE si initialisé, sinon les données initiales
+const giveaways = computed(() => isInitialized.value ? sseGiveaways.value : initialGiveaways.value)
 
 const selectedChannels = ref<string[]>([])
 const showChat = ref<Record<string, boolean>>({})
-
-let refreshInterval: ReturnType<typeof setInterval>
 
 onMounted(() => {
   // Charger depuis localStorage
@@ -28,18 +22,6 @@ onMounted(() => {
     }
     catch {}
   }
-
-  // Rafraîchir les giveaways
-  refresh()
-
-  // Rafraîchir toutes les 10 secondes
-  refreshInterval = setInterval(() => {
-    refresh()
-  }, 10000)
-})
-
-onUnmounted(() => {
-  clearInterval(refreshInterval)
 })
 
 // Sauvegarder dans localStorage à chaque modification
@@ -73,9 +55,9 @@ const availableChannels = computed(() => {
   return [...new Set(channels)]
 })
 
-function getStreamerName(channel: string) {
+function getStreamerName(channel: string): string {
   const match = channel.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([^/?]+)/i)
-  return match ? match[1] : channel
+  return match?.[1] ?? channel
 }
 
 function toggleChannel(channel: string) {

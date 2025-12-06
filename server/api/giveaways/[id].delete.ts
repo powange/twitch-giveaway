@@ -1,4 +1,5 @@
 import { getDb } from '../../utils/db'
+import { broadcastUpdate } from '../../utils/sse'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -22,6 +23,7 @@ export default defineEventHandler(async (event) => {
 
   const deleted = db.data.giveaways.splice(index, 1)[0]
   await db.write()
+  await broadcastUpdate()
 
   return deleted
 })

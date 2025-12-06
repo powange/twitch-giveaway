@@ -1,4 +1,5 @@
 import { getDb } from '../../utils/db'
+import { broadcastUpdate } from '../../utils/sse'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
@@ -20,6 +21,7 @@ export default defineEventHandler(async (event) => {
 
   db.data.gifts.push(gift)
   await db.write()
+  await broadcastUpdate()
 
   return gift
 })

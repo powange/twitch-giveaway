@@ -1,4 +1,5 @@
-import { getDb } from '../../utils/db'
+import { getDb, type Gift } from '../../utils/db'
+import { broadcastUpdate } from '../../utils/sse'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -29,14 +30,15 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const updatedGift = {
-    ...db.data.gifts[giftIndex],
+  const updatedGift: Gift = {
+    id: db.data.gifts[giftIndex]!.id,
     title: body.title,
     image: body.image,
   }
 
   db.data.gifts[giftIndex] = updatedGift
   await db.write()
+  await broadcastUpdate()
 
   return updatedGift
 })

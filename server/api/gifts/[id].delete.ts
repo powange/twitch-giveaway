@@ -1,4 +1,5 @@
 import { getDb } from '../../utils/db'
+import { broadcastUpdate } from '../../utils/sse'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -32,6 +33,7 @@ export default defineEventHandler(async (event) => {
 
   db.data.gifts.splice(giftIndex, 1)
   await db.write()
+  await broadcastUpdate()
 
   return { success: true }
 })

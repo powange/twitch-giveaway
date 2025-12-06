@@ -1,4 +1,5 @@
 import { getDb, type Giveaway } from '../../utils/db'
+import { broadcastUpdate } from '../../utils/sse'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -52,8 +53,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  const existing = db.data.giveaways[giveawayIndex]!
   const updatedGiveaway: Giveaway = {
-    ...db.data.giveaways[giveawayIndex],
+    id: existing.id,
+    createdAt: existing.createdAt,
     twitchChannel: body.twitchChannel,
     date: body.date,
     giftId: body.giftId,
@@ -65,6 +68,7 @@ export default defineEventHandler(async (event) => {
 
   db.data.giveaways[giveawayIndex] = updatedGiveaway
   await db.write()
+  await broadcastUpdate()
 
   return updatedGiveaway
 })
