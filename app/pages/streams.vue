@@ -1,12 +1,16 @@
 <script setup lang="ts">
+const toast = useToast()
+
 // SSE pour les mises à jour en temps réel
-const { giveaways: sseGiveaways, isInitialized } = useSSE()
+const { giveaways: sseGiveaways, gifts: sseGifts, isInitialized } = useSSE()
 
 // Données initiales via useFetch
 const { data: initialGiveaways } = await useFetch('/api/giveaways')
+const { data: initialGifts } = await useFetch('/api/gifts')
 
 // Utiliser les données SSE si initialisé, sinon les données initiales
 const giveaways = computed(() => isInitialized.value ? sseGiveaways.value : initialGiveaways.value)
+const gifts = computed(() => isInitialized.value ? sseGifts.value : initialGifts.value)
 
 const selectedChannels = ref<string[]>([])
 const showChat = ref<Record<string, boolean>>({})
@@ -123,6 +127,43 @@ const parentDomain = computed(() => {
   }
   return 'localhost'
 })
+
+// Obtenir les giveaways actifs pour une chaîne
+function getChannelGiveaways(channel: string) {
+  return activeGiveaways.value.filter(g => getStreamerName(g.twitchChannel) === channel)
+}
+
+// Obtenir tous les cadeaux uniques pour une chaîne
+function getChannelGifts(channel: string) {
+  const channelGiveaways = getChannelGiveaways(channel)
+  const giftIds = [...new Set(channelGiveaways.flatMap(g => g.giftIds))]
+  return giftIds.map(id => gifts.value?.find(g => g.id === id)).filter(Boolean)
+}
+
+// Obtenir la commande pour une chaîne (prend la première trouvée)
+function getChannelCommand(channel: string) {
+  const channelGiveaways = getChannelGiveaways(channel)
+  const giveawayWithCommand = channelGiveaways.find(g => g.type === 'command' && g.command)
+  return giveawayWithCommand?.command
+}
+
+// Copier la commande dans le presse-papier
+async function copyCommand(command: string) {
+  try {
+    await navigator.clipboard.writeText(command)
+    toast.add({
+      title: 'Copie',
+      description: 'Commande copiee dans le presse-papier',
+      color: 'success'
+    })
+  } catch {
+    toast.add({
+      title: 'Erreur',
+      description: 'Impossible de copier la commande',
+      color: 'error'
+    })
+  }
+}
 </script>
 
 <template>
@@ -222,12 +263,45 @@ const parentDomain = computed(() => {
         >
           <!-- Header -->
           <div class="flex justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-            <div class="flex items-center gap-2">
-              <UIcon
-                name="i-simple-icons-twitch"
-                class="w-4 h-4 text-purple-500"
-              />
-              <span class="font-semibold">{{ channel }}</span>
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2">
+                <UIcon
+                  name="i-simple-icons-twitch"
+                  class="w-4 h-4 text-purple-500"
+                />
+                <span class="font-semibold">{{ channel }}</span>
+              </div>
+
+              <!-- Cadeaux -->
+              <div
+                v-if="getChannelGifts(channel).length"
+                class="flex items-center gap-1"
+              >
+                <img
+                  v-for="gift in getChannelGifts(channel)"
+                  :key="gift.id"
+                  :src="gift.image"
+                  :alt="gift.title"
+                  :title="gift.title"
+                  class="w-6 h-6 object-contain"
+                >
+              </div>
+
+              <!-- Commande -->
+              <div
+                v-if="getChannelCommand(channel)"
+                class="flex items-center gap-1"
+              >
+                <code class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-xs">{{ getChannelCommand(channel) }}</code>
+                <UButton
+                  icon="i-lucide-copy"
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  title="Copier la commande"
+                  @click="copyCommand(getChannelCommand(channel)!)"
+                />
+              </div>
             </div>
             <div class="flex gap-1">
               <UButton
