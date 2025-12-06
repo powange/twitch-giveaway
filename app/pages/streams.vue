@@ -12,6 +12,10 @@ const selectedChannels = ref<string[]>([])
 const showChat = ref<Record<string, boolean>>({})
 const focusedChannel = ref<string | null>(null)
 
+// Confirmation suppression
+const confirmDeleteOpen = ref(false)
+const channelToDelete = ref<string | null>(null)
+
 onMounted(() => {
   // Charger depuis localStorage
   const saved = localStorage.getItem('selectedStreams')
@@ -80,15 +84,25 @@ function toggleChat(channel: string) {
   showChat.value[channel] = !showChat.value[channel]
 }
 
-function removeStream(channel: string) {
-  const index = selectedChannels.value.indexOf(channel)
+function askRemoveStream(channel: string) {
+  channelToDelete.value = channel
+  confirmDeleteOpen.value = true
+}
+
+function confirmRemoveStream() {
+  if (!channelToDelete.value) return
+
+  const index = selectedChannels.value.indexOf(channelToDelete.value)
   if (index !== -1) {
     selectedChannels.value.splice(index, 1)
-    removeChatState(channel)
-    if (focusedChannel.value === channel) {
+    removeChatState(channelToDelete.value)
+    if (focusedChannel.value === channelToDelete.value) {
       focusedChannel.value = null
     }
   }
+
+  confirmDeleteOpen.value = false
+  channelToDelete.value = null
 }
 
 function toggleFocus(channel: string) {
@@ -234,12 +248,13 @@ const parentDomain = computed(() => {
                 @click="toggleChat(channel)"
               />
               <UButton
+                v-if="focusedChannel !== channel"
                 icon="i-lucide-x"
                 size="xs"
                 color="error"
                 variant="ghost"
                 title="Fermer"
-                @click="removeStream(channel)"
+                @click="askRemoveStream(channel)"
               />
             </div>
           </div>
@@ -290,5 +305,37 @@ const parentDomain = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Modal de confirmation suppression -->
+    <UModal v-model:open="confirmDeleteOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <h2 class="text-xl font-semibold">
+              Supprimer le stream
+            </h2>
+          </template>
+
+          <p>
+            Etes-vous sur de vouloir supprimer le stream
+            <strong>{{ channelToDelete }}</strong> ?
+          </p>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <UButton
+              label="Annuler"
+              color="neutral"
+              variant="outline"
+              @click="confirmDeleteOpen = false"
+            />
+            <UButton
+              label="Supprimer"
+              color="error"
+              @click="confirmRemoveStream"
+            />
+          </div>
+        </UCard>
+      </template>
+    </UModal>
   </UContainer>
 </template>
