@@ -28,19 +28,9 @@ const { giveaways: sseGiveaways, gifts: sseGifts, isInitialized } = useSSE()
 const { data: initialGiveaways } = await useFetch<Giveaway[]>('/api/giveaways')
 const { data: initialGifts } = await useFetch<Gift[]>('/api/gifts')
 
-// Utiliser les données SSE si initialisé ET si elles contiennent des données, sinon les données initiales
-const giveaways = computed(() => {
-  if (isInitialized.value && (sseGiveaways.value.length > 0 || initialGiveaways.value?.length === 0)) {
-    return sseGiveaways.value
-  }
-  return initialGiveaways.value
-})
-const gifts = computed(() => {
-  if (isInitialized.value && (sseGifts.value.length > 0 || initialGifts.value?.length === 0)) {
-    return sseGifts.value
-  }
-  return initialGifts.value
-})
+// Utiliser les données SSE une fois initialisé, sinon les données initiales
+const giveaways = computed(() => isInitialized.value ? sseGiveaways.value : (initialGiveaways.value || []))
+const gifts = computed(() => isInitialized.value ? sseGifts.value : (initialGifts.value || []))
 
 // Filtres
 const selectedGifts = ref<string[]>([])

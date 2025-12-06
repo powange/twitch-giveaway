@@ -143,19 +143,9 @@ watch(drawAlert, (alert) => {
 const { data: initialGiveaways } = await useFetch('/api/giveaways')
 const { data: initialGifts } = await useFetch('/api/gifts')
 
-// Utiliser les données SSE si initialisé ET si elles contiennent des données
-const giveaways = computed(() => {
-  if (isInitialized.value && (sseGiveaways.value.length > 0 || initialGiveaways.value?.length === 0)) {
-    return sseGiveaways.value
-  }
-  return initialGiveaways.value
-})
-const gifts = computed(() => {
-  if (isInitialized.value && (sseGifts.value.length > 0 || initialGifts.value?.length === 0)) {
-    return sseGifts.value
-  }
-  return initialGifts.value
-})
+// Utiliser les données SSE une fois initialisé, sinon les données initiales
+const giveaways = computed(() => isInitialized.value ? sseGiveaways.value : (initialGiveaways.value || []))
+const gifts = computed(() => isInitialized.value ? sseGifts.value : (initialGifts.value || []))
 
 const selectedChannels = ref<string[]>([])
 const showChat = ref<Record<string, boolean>>({})
