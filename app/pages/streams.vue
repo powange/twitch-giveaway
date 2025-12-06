@@ -36,26 +36,25 @@ watch([selectedChannels, showChat], () => {
   }))
 }, { deep: true })
 
-// Filtrer les giveaways du jour ou de la veille
-const recentGiveaways = computed(() => {
+// Vérifier si un giveaway est clos (manuellement ou > 2 jours)
+function isGiveawayClosed(giveaway: { closed: boolean, date: string }): boolean {
+  if (giveaway.closed) return true
+  const giveawayDate = new Date(giveaway.date)
+  const twoDaysAgo = new Date()
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+  twoDaysAgo.setHours(0, 0, 0, 0)
+  return giveawayDate < twoDaysAgo
+}
+
+// Filtrer les giveaways en cours uniquement
+const activeGiveaways = computed(() => {
   if (!giveaways.value) return []
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-
-  return giveaways.value.filter((g) => {
-    const giveawayDate = new Date(g.date)
-    giveawayDate.setHours(0, 0, 0, 0)
-    return giveawayDate.getTime() >= yesterday.getTime() && giveawayDate.getTime() <= today.getTime()
-  })
+  return giveaways.value.filter(g => !isGiveawayClosed(g))
 })
 
-// Extraire les chaînes uniques des giveaways récents
+// Extraire les chaînes uniques des giveaways en cours
 const availableChannels = computed(() => {
-  const channels = recentGiveaways.value.map(g => getStreamerName(g.twitchChannel))
+  const channels = activeGiveaways.value.map(g => getStreamerName(g.twitchChannel))
   return [...new Set(channels)]
 })
 
@@ -151,7 +150,7 @@ const parentDomain = computed(() => {
         v-if="!availableChannels.length"
         class="text-center py-4 text-muted"
       >
-        Aucune chaine disponible. Ajoutez d'abord des giveaways.
+        Aucune chaine disponible. Il n'y a pas de giveaway en cours.
       </div>
 
       <div
