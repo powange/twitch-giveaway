@@ -10,7 +10,8 @@ interface Giveaway {
   twitchChannel: string
   date: string
   giftId: string
-  type: 'command' | 'ticket'
+  type: 'command' | 'ticket' | 'streamelements'
+  streamElementsUrl?: string
   drawTime?: string
   requireFollow: boolean
   createdAt: string
@@ -27,14 +28,43 @@ onMounted(() => {
   refreshGifts()
 })
 
+// Filtres par chaîne Twitch
+const selectedChannels = ref<string[]>([])
+
+const availableChannels = computed(() => {
+  if (!giveaways.value) return []
+  const channels = giveaways.value.map(g => getStreamerName(g.twitchChannel))
+  return [...new Set(channels)]
+})
+
+const filteredGiveaways = computed(() => {
+  if (!giveaways.value) return []
+  if (selectedChannels.value.length === 0) return giveaways.value
+  return giveaways.value.filter(g =>
+    selectedChannels.value.includes(getStreamerName(g.twitchChannel))
+  )
+})
+
+function toggleChannelFilter(channel: string) {
+  const index = selectedChannels.value.indexOf(channel)
+  if (index === -1) {
+    selectedChannels.value.push(channel)
+  }
+  else {
+    selectedChannels.value.splice(index, 1)
+  }
+}
+
 const isModalOpen = ref(false)
 const isLoading = ref(false)
+const editingId = ref<string | null>(null)
 
 const form = reactive({
   twitchChannel: '',
   date: '',
   giftId: '',
-  type: 'command' as 'command' | 'ticket',
+  type: 'command' as 'command' | 'ticket' | 'streamelements',
+  streamElementsUrl: '',
   drawTime: '',
   requireFollow: false,
 })
@@ -42,6 +72,7 @@ const form = reactive({
 const giveawayTypes = [
   { label: 'Commande', value: 'command' },
   { label: 'Ticket', value: 'ticket' },
+  { label: 'StreamElements', value: 'streamelements' },
 ]
 
 function resetForm() {
@@ -49,15 +80,29 @@ function resetForm() {
   form.date = ''
   form.giftId = ''
   form.type = 'command'
+  form.streamElementsUrl = ''
   form.drawTime = ''
   form.requireFollow = false
+  editingId.value = null
+}
+
+function editGiveaway(giveaway: Giveaway) {
+  editingId.value = giveaway.id
+  form.twitchChannel = giveaway.twitchChannel
+  form.date = giveaway.date
+  form.giftId = giveaway.giftId
+  form.type = giveaway.type
+  form.streamElementsUrl = giveaway.streamElementsUrl || ''
+  form.drawTime = giveaway.drawTime || ''
+  form.requireFollow = giveaway.requireFollow
+  isModalOpen.value = true
 }
 
 function getGift(giftId: string): Gift | undefined {
   return gifts.value?.find(g => g.id === giftId)
 }
 
-async function addGiveaway() {
+async function saveGiveaway() {
   if (!form.twitchChannel || !form.giftId || !form.date) {
     toast.add({
       title: 'Erreur',
@@ -69,18 +114,36 @@ async function addGiveaway() {
 
   isLoading.value = true
   try {
-    await $fetch('/api/giveaways', {
-      method: 'POST',
-      body: {
-        ...form,
-        drawTime: form.drawTime || undefined,
-      },
-    })
-    toast.add({
-      title: 'Succes',
-      description: 'Giveaway ajoute avec succes',
-      color: 'success',
-    })
+    if (editingId.value) {
+      // Mode édition
+      await $fetch(`/api/giveaways/${editingId.value}`, {
+        method: 'PUT',
+        body: {
+          ...form,
+          drawTime: form.drawTime || undefined,
+        },
+      })
+      toast.add({
+        title: 'Succes',
+        description: 'Giveaway modifie avec succes',
+        color: 'success',
+      })
+    }
+    else {
+      // Mode création
+      await $fetch('/api/giveaways', {
+        method: 'POST',
+        body: {
+          ...form,
+          drawTime: form.drawTime || undefined,
+        },
+      })
+      toast.add({
+        title: 'Succes',
+        description: 'Giveaway ajoute avec succes',
+        color: 'success',
+      })
+    }
     resetForm()
     isModalOpen.value = false
     await refresh()
@@ -88,7 +151,7 @@ async function addGiveaway() {
   catch {
     toast.add({
       title: 'Erreur',
-      description: 'Impossible d\'ajouter le giveaway',
+      description: editingId.value ? 'Impossible de modifier le giveaway' : 'Impossible d\'ajouter le giveaway',
       color: 'error',
     })
   }
@@ -184,8 +247,35 @@ function getTwitchUrl(channel: string) {
       />
     </div>
 
-    <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <UCard v-for="giveaway in giveaways" :key="giveaway.id">
+    <template v-else>
+      <!-- Filtres par chaîne -->
+      <UCard v-if="availableChannels.length > 1" class="mb-6">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="text-sm font-medium text-muted">Filtrer par streamer :</span>
+          <UButton
+            v-for="channel in availableChannels"
+            :key="channel"
+            :color="selectedChannels.includes(channel) ? 'primary' : 'neutral'"
+            :variant="selectedChannels.includes(channel) ? 'solid' : 'outline'"
+            size="xs"
+            @click="toggleChannelFilter(channel)"
+          >
+            <UIcon name="i-simple-icons-twitch" class="w-3 h-3 mr-1" />
+            {{ channel }}
+          </UButton>
+          <UButton
+            v-if="selectedChannels.length > 0"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            label="Effacer"
+            @click="selectedChannels = []"
+          />
+        </div>
+      </UCard>
+
+      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <UCard v-for="giveaway in filteredGiveaways" :key="giveaway.id">
         <template #header>
           <div class="flex justify-between items-start">
             <div class="flex items-center gap-3">
@@ -197,18 +287,27 @@ function getTwitchUrl(channel: string) {
               >
               <div>
                 <h3 class="font-semibold">{{ getGift(giveaway.giftId)?.title || 'Cadeau inconnu' }}</h3>
-                <UBadge :color="giveaway.type === 'command' ? 'primary' : 'info'" size="xs">
-                  {{ giveaway.type === 'command' ? 'Commande' : 'Ticket' }}
+                <UBadge :color="giveaway.type === 'command' ? 'primary' : giveaway.type === 'ticket' ? 'info' : 'warning'" size="xs">
+                  {{ giveaway.type === 'command' ? 'Commande' : giveaway.type === 'ticket' ? 'Ticket' : 'StreamElements' }}
                 </UBadge>
               </div>
             </div>
-            <UButton
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              @click="deleteGiveaway(giveaway.id)"
-            />
+            <div class="flex gap-1">
+              <UButton
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="editGiveaway(giveaway)"
+              />
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                @click="deleteGiveaway(giveaway.id)"
+              />
+            </div>
           </div>
         </template>
 
@@ -234,6 +333,17 @@ function getTwitchUrl(channel: string) {
             <span>Tirage a {{ giveaway.drawTime }}</span>
           </div>
 
+          <div v-if="giveaway.streamElementsUrl" class="flex items-center gap-2">
+            <UIcon name="i-lucide-external-link" class="w-4 h-4" />
+            <a
+              :href="giveaway.streamElementsUrl"
+              target="_blank"
+              class="text-primary hover:underline truncate"
+            >
+              StreamElements
+            </a>
+          </div>
+
           <div class="flex items-center gap-2">
             <UIcon name="i-lucide-user-check" class="w-4 h-4" />
             <span>{{ giveaway.requireFollow ? 'Follow requis' : 'Follow non requis' }}</span>
@@ -246,16 +356,17 @@ function getTwitchUrl(channel: string) {
           </p>
         </template>
       </UCard>
-    </div>
+      </div>
+    </template>
 
-    <UModal v-model:open="isModalOpen">
+    <UModal v-model:open="isModalOpen" @close="resetForm">
       <template #content>
         <UCard>
           <template #header>
-            <h2 class="text-xl font-semibold">Nouveau Giveaway</h2>
+            <h2 class="text-xl font-semibold">{{ editingId ? 'Modifier le Giveaway' : 'Nouveau Giveaway' }}</h2>
           </template>
 
-          <form class="space-y-4" @submit.prevent="addGiveaway">
+          <form class="space-y-4" @submit.prevent="saveGiveaway">
             <UFormField label="Chaine Twitch" required>
               <UInput
                 v-model="form.twitchChannel"
@@ -288,6 +399,14 @@ function getTwitchUrl(channel: string) {
               />
             </UFormField>
 
+            <UFormField v-if="form.type === 'streamelements'" label="URL StreamElements" required>
+              <UInput
+                v-model="form.streamElementsUrl"
+                placeholder="https://streamelements.com/..."
+                class="w-full"
+              />
+            </UFormField>
+
             <UFormField label="Heure du tirage">
               <UInput
                 v-model="form.drawTime"
@@ -313,7 +432,7 @@ function getTwitchUrl(channel: string) {
               />
               <UButton
                 type="submit"
-                label="Ajouter"
+                :label="editingId ? 'Modifier' : 'Ajouter'"
                 :loading="isLoading"
               />
             </div>

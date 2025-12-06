@@ -10,10 +10,45 @@ interface Giveaway {
   createdAt: string
 }
 
-const { data: giveaways } = await useFetch<Giveaway[]>('/api/giveaways')
+const { data: giveaways, refresh } = await useFetch<Giveaway[]>('/api/giveaways')
 
 const selectedChannels = ref<string[]>([])
 const showChat = ref<Record<string, boolean>>({})
+
+let refreshInterval: ReturnType<typeof setInterval>
+
+onMounted(() => {
+  // Charger depuis localStorage
+  const saved = localStorage.getItem('selectedStreams')
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved)
+      selectedChannels.value = parsed.channels || []
+      showChat.value = parsed.showChat || {}
+    }
+    catch {}
+  }
+
+  // Rafraîchir les giveaways
+  refresh()
+
+  // Rafraîchir toutes les 10 secondes
+  refreshInterval = setInterval(() => {
+    refresh()
+  }, 10000)
+})
+
+onUnmounted(() => {
+  clearInterval(refreshInterval)
+})
+
+// Sauvegarder dans localStorage à chaque modification
+watch([selectedChannels, showChat], () => {
+  localStorage.setItem('selectedStreams', JSON.stringify({
+    channels: selectedChannels.value,
+    showChat: showChat.value,
+  }))
+}, { deep: true })
 
 // Filtrer les giveaways du jour ou de la veille
 const recentGiveaways = computed(() => {

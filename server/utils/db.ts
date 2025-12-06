@@ -13,7 +13,8 @@ export interface Giveaway {
   twitchChannel: string
   date: string
   giftId: string
-  type: 'command' | 'ticket'
+  type: 'command' | 'ticket' | 'streamelements'
+  streamElementsUrl?: string
   drawTime?: string
   requireFollow: boolean
   createdAt: string

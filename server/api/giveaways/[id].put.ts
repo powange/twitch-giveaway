@@ -1,7 +1,15 @@
 import { getDb, type Giveaway } from '../../utils/db'
 
 export default defineEventHandler(async (event) => {
+  const id = getRouterParam(event, 'id')
   const body = await readBody(event)
+
+  if (!id) {
+    throw createError({
+      statusCode: 400,
+      message: 'ID requis',
+    })
+  }
 
   if (!body.twitchChannel || !body.giftId || !body.type || !body.date) {
     throw createError({
@@ -26,6 +34,15 @@ export default defineEventHandler(async (event) => {
 
   const db = await getDb()
 
+  const giveawayIndex = db.data.giveaways.findIndex(g => g.id === id)
+
+  if (giveawayIndex === -1) {
+    throw createError({
+      statusCode: 404,
+      message: 'Giveaway non trouvé',
+    })
+  }
+
   // Vérifier que le cadeau existe
   const giftExists = db.data.gifts.some(g => g.id === body.giftId)
   if (!giftExists) {
@@ -35,8 +52,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const giveaway: Giveaway = {
-    id: crypto.randomUUID(),
+  const updatedGiveaway: Giveaway = {
+    ...db.data.giveaways[giveawayIndex],
     twitchChannel: body.twitchChannel,
     date: body.date,
     giftId: body.giftId,
@@ -44,11 +61,10 @@ export default defineEventHandler(async (event) => {
     streamElementsUrl: body.type === 'streamelements' ? body.streamElementsUrl : undefined,
     drawTime: body.drawTime || undefined,
     requireFollow: body.requireFollow ?? false,
-    createdAt: new Date().toISOString(),
   }
 
-  db.data.giveaways.push(giveaway)
+  db.data.giveaways[giveawayIndex] = updatedGiveaway
   await db.write()
 
-  return giveaway
+  return updatedGiveaway
 })
