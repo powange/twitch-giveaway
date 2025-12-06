@@ -106,25 +106,30 @@ const { data: initialGifts } = await useFetch('/api/gifts')
 const giveaways = computed(() => isInitialized.value ? sseGiveaways.value : initialGiveaways.value)
 const gifts = computed(() => isInitialized.value ? sseGifts.value : initialGifts.value)
 
-const selectedChannels = ref<string[]>([])
-const showChat = ref<Record<string, boolean>>({})
+// Charger depuis localStorage immédiatement côté client
+function loadFromStorage() {
+  if (!import.meta.client) return { channels: [], showChat: {} }
+  try {
+    const saved = localStorage.getItem('selectedStreams')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      return {
+        channels: parsed.channels || [],
+        showChat: parsed.showChat || {}
+      }
+    }
+  } catch { /* ignore */ }
+  return { channels: [], showChat: {} }
+}
+
+const stored = loadFromStorage()
+const selectedChannels = ref<string[]>(stored.channels)
+const showChat = ref<Record<string, boolean>>(stored.showChat)
 const focusedChannel = ref<string | null>(null)
 
 // Confirmation suppression
 const confirmDeleteOpen = ref(false)
 const channelToDelete = ref<string | null>(null)
-
-onMounted(() => {
-  // Charger depuis localStorage
-  const saved = localStorage.getItem('selectedStreams')
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved)
-      selectedChannels.value = parsed.channels || []
-      showChat.value = parsed.showChat || {}
-    } catch { /* ignore invalid JSON */ }
-  }
-})
 
 // Sauvegarder dans localStorage à chaque modification
 watch([selectedChannels, showChat], () => {
@@ -146,7 +151,6 @@ watch(selectedChannels, async (newChannels, oldChannels) => {
   const addedChannels = newChannels.filter(c => !(oldChannels || []).includes(c))
   if (addedChannels.length > 0) {
     await nextTick()
-    await new Promise(resolve => setTimeout(resolve, 200))
 
     for (const channel of addedChannels) {
       await createPlayer(`player-${channel}`, channel)
@@ -268,6 +272,13 @@ function getChannelCommand(channel: string) {
   const channelGiveaways = getChannelGiveaways(channel)
   const giveawayWithCommand = channelGiveaways.find(g => g.type === 'command' && g.command)
   return giveawayWithCommand?.command
+}
+
+// Obtenir l'URL StreamElements pour une chaîne
+function getChannelStreamElementsUrl(channel: string) {
+  const channelGiveaways = getChannelGiveaways(channel)
+  const giveawayWithSE = channelGiveaways.find(g => g.type === 'streamelements' && g.streamElementsUrl)
+  return giveawayWithSE?.streamElementsUrl
 }
 
 // Copier la commande dans le presse-papier
@@ -481,6 +492,24 @@ function handleQualityChange(channel: string, quality: string) {
                   @click="copyCommand(getChannelCommand(channel)!)"
                 />
               </div>
+
+              <!-- StreamElements -->
+              <a
+                v-if="getChannelStreamElementsUrl(channel)"
+                :href="getChannelStreamElementsUrl(channel)"
+                target="_blank"
+                class="flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                <UIcon
+                  name="i-lucide-ticket"
+                  class="w-3 h-3"
+                />
+                StreamElements
+                <UIcon
+                  name="i-lucide-external-link"
+                  class="w-3 h-3"
+                />
+              </a>
 
               <!-- Selecteur de qualité -->
               <div
