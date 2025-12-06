@@ -11,6 +11,7 @@ const { data: gifts, refresh } = await useFetch<Gift[]>('/api/gifts')
 
 const isModalOpen = ref(false)
 const isLoading = ref(false)
+const editingId = ref<string | null>(null)
 
 const form = reactive({
   title: '',
@@ -20,9 +21,17 @@ const form = reactive({
 function resetForm() {
   form.title = ''
   form.image = ''
+  editingId.value = null
 }
 
-async function addGift() {
+function editGift(gift: Gift) {
+  editingId.value = gift.id
+  form.title = gift.title
+  form.image = gift.image
+  isModalOpen.value = true
+}
+
+async function saveGift() {
   if (!form.title || !form.image) {
     toast.add({
       title: 'Erreur',
@@ -34,15 +43,28 @@ async function addGift() {
 
   isLoading.value = true
   try {
-    await $fetch('/api/gifts', {
-      method: 'POST',
-      body: form,
-    })
-    toast.add({
-      title: 'Succes',
-      description: 'Cadeau ajoute avec succes',
-      color: 'success',
-    })
+    if (editingId.value) {
+      await $fetch(`/api/gifts/${editingId.value}`, {
+        method: 'PUT',
+        body: form,
+      })
+      toast.add({
+        title: 'Succes',
+        description: 'Cadeau modifie avec succes',
+        color: 'success',
+      })
+    }
+    else {
+      await $fetch('/api/gifts', {
+        method: 'POST',
+        body: form,
+      })
+      toast.add({
+        title: 'Succes',
+        description: 'Cadeau ajoute avec succes',
+        color: 'success',
+      })
+    }
     resetForm()
     isModalOpen.value = false
     await refresh()
@@ -50,7 +72,7 @@ async function addGift() {
   catch {
     toast.add({
       title: 'Erreur',
-      description: 'Impossible d\'ajouter le cadeau',
+      description: editingId.value ? 'Impossible de modifier le cadeau' : 'Impossible d\'ajouter le cadeau',
       color: 'error',
     })
   }
@@ -121,7 +143,15 @@ async function deleteGift(id: string) {
         </div>
 
         <template #footer>
-          <div class="flex justify-center">
+          <div class="flex justify-center gap-2">
+            <UButton
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              label="Modifier"
+              @click="editGift(gift)"
+            />
             <UButton
               icon="i-lucide-trash-2"
               color="error"
@@ -135,14 +165,14 @@ async function deleteGift(id: string) {
       </UCard>
     </div>
 
-    <UModal v-model:open="isModalOpen">
+    <UModal v-model:open="isModalOpen" @close="resetForm">
       <template #content>
         <UCard>
           <template #header>
-            <h2 class="text-xl font-semibold">Nouveau Cadeau</h2>
+            <h2 class="text-xl font-semibold">{{ editingId ? 'Modifier le Cadeau' : 'Nouveau Cadeau' }}</h2>
           </template>
 
-          <form class="space-y-4" @submit.prevent="addGift">
+          <form class="space-y-4" @submit.prevent="saveGift">
             <UFormField label="Titre" required>
               <UInput
                 v-model="form.title"
@@ -176,7 +206,7 @@ async function deleteGift(id: string) {
               />
               <UButton
                 type="submit"
-                label="Ajouter"
+                :label="editingId ? 'Modifier' : 'Ajouter'"
                 :loading="isLoading"
               />
             </div>
