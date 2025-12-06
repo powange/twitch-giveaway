@@ -390,6 +390,17 @@ function getTodayDate() {
         <p class="text-muted mt-1">
           Gerez vos giveaways en un seul endroit
         </p>
+        <a
+          href="https://www.twitch.tv/directory/category/sea-of-thieves"
+          target="_blank"
+          class="inline-flex items-center gap-1 text-sm text-purple-500 hover:text-purple-400 mt-2"
+        >
+          <UIcon
+            name="i-simple-icons-twitch"
+            class="w-4 h-4"
+          />
+          Sea of Thieves sur Twitch
+        </a>
       </div>
       <UButton
         icon="i-lucide-plus"
