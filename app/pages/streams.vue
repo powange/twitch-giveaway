@@ -201,73 +201,75 @@ const parentDomain = computed(() => {
               : ''
         ]"
       >
-        <UCard
-          class="overflow-hidden h-full flex flex-col"
+        <div
+          :class="[
+            'rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden',
+            focusedChannel === channel ? 'h-full flex flex-col' : ''
+          ]"
         >
-          <template #header>
-            <div class="flex justify-between items-center">
-              <div class="flex items-center gap-2">
-                <UIcon
-                  name="i-simple-icons-twitch"
-                  class="w-4 h-4 text-purple-500"
-                />
-                <span class="font-semibold">{{ channel }}</span>
-              </div>
-              <div class="flex gap-1">
-                <UButton
-                  :icon="focusedChannel === channel ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  :title="focusedChannel === channel ? 'Reduire' : 'Agrandir'"
-                  @click="toggleFocus(channel)"
-                />
-                <UButton
-                  :icon="showChat[channel] ? 'i-lucide-message-square-off' : 'i-lucide-message-square'"
-                  size="xs"
-                  :color="showChat[channel] ? 'primary' : 'neutral'"
-                  variant="ghost"
-                  :title="showChat[channel] ? 'Masquer le chat' : 'Afficher le chat'"
-                  @click="toggleChat(channel)"
-                />
-                <UButton
-                  icon="i-lucide-x"
-                  size="xs"
-                  color="error"
-                  variant="ghost"
-                  title="Fermer"
-                  @click="removeStream(channel)"
-                />
-              </div>
+          <!-- Header -->
+          <div class="flex justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+            <div class="flex items-center gap-2">
+              <UIcon
+                name="i-simple-icons-twitch"
+                class="w-4 h-4 text-purple-500"
+              />
+              <span class="font-semibold">{{ channel }}</span>
             </div>
-          </template>
+            <div class="flex gap-1">
+              <UButton
+                :icon="focusedChannel === channel ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                :title="focusedChannel === channel ? 'Reduire' : 'Agrandir'"
+                @click="toggleFocus(channel)"
+              />
+              <UButton
+                :icon="showChat[channel] ? 'i-lucide-message-square-off' : 'i-lucide-message-square'"
+                size="xs"
+                :color="showChat[channel] ? 'primary' : 'neutral'"
+                variant="ghost"
+                :title="showChat[channel] ? 'Masquer le chat' : 'Afficher le chat'"
+                @click="toggleChat(channel)"
+              />
+              <UButton
+                icon="i-lucide-x"
+                size="xs"
+                color="error"
+                variant="ghost"
+                title="Fermer"
+                @click="removeStream(channel)"
+              />
+            </div>
+          </div>
 
+          <!-- Content -->
           <div
             :class="[
-              'flex gap-2 flex-1',
+              'flex gap-2',
               focusedChannel === channel
-                ? (showChat[channel] ? 'flex-col lg:flex-row' : '')
+                ? 'flex-1 min-h-0 ' + (showChat[channel] ? 'flex-col lg:flex-row' : '')
                 : (showChat[channel] ? 'flex-col xl:flex-row' : '')
             ]"
           >
             <!-- Player -->
-            <div class="flex-1 min-h-0">
-              <div
+            <div
+              :class="[
+                focusedChannel === channel
+                  ? 'flex-1 min-h-0'
+                  : 'relative w-full pb-[56.25%]'
+              ]"
+            >
+              <iframe
+                :src="`https://player.twitch.tv/?channel=${channel}&parent=${parentDomain}`"
                 :class="[
-                  'relative w-full h-full',
-                  focusedChannel !== channel && 'pb-[56.25%]'
+                  focusedChannel === channel
+                    ? 'w-full h-full'
+                    : 'absolute inset-0 w-full h-full'
                 ]"
-              >
-                <iframe
-                  :src="`https://player.twitch.tv/?channel=${channel}&parent=${parentDomain}`"
-                  :class="[
-                    focusedChannel === channel
-                      ? 'w-full h-full'
-                      : 'absolute inset-0 w-full h-full'
-                  ]"
-                  allowfullscreen
-                />
-              </div>
+                allowfullscreen
+              />
             </div>
 
             <!-- Chat -->
@@ -275,7 +277,7 @@ const parentDomain = computed(() => {
               v-if="showChat[channel]"
               :class="[
                 focusedChannel === channel
-                  ? 'h-64 lg:h-auto lg:w-96'
+                  ? 'h-64 lg:h-auto lg:w-96 shrink-0'
                   : 'xl:w-80 h-80 xl:h-auto'
               ]"
             >
@@ -285,7 +287,7 @@ const parentDomain = computed(() => {
               />
             </div>
           </div>
-        </UCard>
+        </div>
       </div>
     </div>
   </UContainer>
