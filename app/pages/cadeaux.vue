@@ -13,6 +13,15 @@ const isModalOpen = ref(false)
 const isLoading = ref(false)
 const editingId = ref<string | null>(null)
 
+// Confirmation de suppression
+const confirmModalOpen = ref(false)
+const giftToDelete = ref<Gift | null>(null)
+
+function askDeleteConfirmation(gift: Gift) {
+  giftToDelete.value = gift
+  confirmModalOpen.value = true
+}
+
 const form = reactive({
   title: '',
   image: '',
@@ -81,9 +90,11 @@ async function saveGift() {
   }
 }
 
-async function deleteGift(id: string) {
+async function confirmDelete() {
+  if (!giftToDelete.value) return
+
   try {
-    await $fetch(`/api/gifts/${id}`, {
+    await $fetch(`/api/gifts/${giftToDelete.value.id}`, {
       method: 'DELETE',
     })
     toast.add({
@@ -102,6 +113,10 @@ async function deleteGift(id: string) {
       description: message,
       color: 'error',
     })
+  }
+  finally {
+    confirmModalOpen.value = false
+    giftToDelete.value = null
   }
 }
 </script>
@@ -158,7 +173,7 @@ async function deleteGift(id: string) {
               variant="ghost"
               size="xs"
               label="Supprimer"
-              @click="deleteGift(gift.id)"
+              @click="askDeleteConfirmation(gift)"
             />
           </div>
         </template>
@@ -211,6 +226,37 @@ async function deleteGift(id: string) {
               />
             </div>
           </form>
+        </UCard>
+      </template>
+    </UModal>
+
+    <!-- Modal de confirmation de suppression -->
+    <UModal v-model:open="confirmModalOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <h2 class="text-xl font-semibold">Supprimer le cadeau</h2>
+          </template>
+
+          <p>
+            Etes-vous sur de vouloir supprimer le cadeau
+            <strong>{{ giftToDelete?.title }}</strong> ?
+            Cette action est irreversible.
+          </p>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <UButton
+              label="Annuler"
+              color="neutral"
+              variant="outline"
+              @click="confirmModalOpen = false"
+            />
+            <UButton
+              label="Supprimer"
+              color="error"
+              @click="confirmDelete"
+            />
+          </div>
         </UCard>
       </template>
     </UModal>
