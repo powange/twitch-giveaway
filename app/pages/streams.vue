@@ -540,7 +540,17 @@ function handleQualityChange(channel: string, quality: string) {
                   name="i-simple-icons-twitch"
                   class="w-4 h-4 text-purple-500"
                 />
-                <span class="font-semibold">{{ channel }}</span>
+                <div class="flex flex-col">
+                  <span class="font-semibold">{{ channel }}</span>
+                  <UBadge
+                    v-if="getChannelGiveaways(channel)[0]"
+                    :color="getChannelGiveaways(channel)[0].type === 'command' ? 'primary' : getChannelGiveaways(channel)[0].type === 'ticket' ? 'info' : 'warning'"
+                    size="xs"
+                    class="w-fit"
+                  >
+                    {{ getChannelGiveaways(channel)[0].type === 'command' ? 'Commande' : getChannelGiveaways(channel)[0].type === 'ticket' ? 'Ticket' : 'StreamElements' }}
+                  </UBadge>
+                </div>
               </div>
 
               <!-- Cadeaux -->
