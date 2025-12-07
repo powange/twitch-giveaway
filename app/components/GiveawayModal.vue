@@ -226,7 +226,7 @@ function close() {
           </UFormField>
 
           <UFormField
-            v-if="form.type === 'command'"
+            v-if="form.type === 'command' || form.type === 'ticket'"
             label="Commande chat"
           >
             <UInput

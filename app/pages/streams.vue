@@ -337,13 +337,15 @@ function getChannelGiveaways(channel: string) {
 function getChannelGifts(channel: string) {
   const channelGiveaways = getChannelGiveaways(channel)
   const giftIds = [...new Set(channelGiveaways.flatMap(g => g.giftIds))]
-  return giftIds.map(id => gifts.value?.find(g => g.id === id)).filter(Boolean)
+  return giftIds
+    .map(id => gifts.value?.find(g => g.id === id))
+    .filter((g): g is NonNullable<typeof g> => !!g)
 }
 
-// Obtenir la commande pour une chaîne (prend la première trouvée)
+// Obtenir la commande pour une chaîne (prend la première trouvée, type command ou ticket)
 function getChannelCommand(channel: string) {
   const channelGiveaways = getChannelGiveaways(channel)
-  const giveawayWithCommand = channelGiveaways.find(g => g.type === 'command' && g.command)
+  const giveawayWithCommand = channelGiveaways.find(g => (g.type === 'command' || g.type === 'ticket') && g.command)
   return giveawayWithCommand?.command
 }
 
@@ -352,6 +354,11 @@ function getChannelStreamElementsUrl(channel: string) {
   const channelGiveaways = getChannelGiveaways(channel)
   const giveawayWithSE = channelGiveaways.find(g => g.type === 'streamelements' && g.streamElementsUrl)
   return giveawayWithSE?.streamElementsUrl
+}
+
+// Obtenir le type du premier giveaway pour une chaîne
+function getChannelGiveawayType(channel: string) {
+  return getChannelGiveaways(channel)[0]?.type
 }
 
 // Copier la commande dans le presse-papier
@@ -540,17 +547,7 @@ function handleQualityChange(channel: string, quality: string) {
                   name="i-simple-icons-twitch"
                   class="w-4 h-4 text-purple-500"
                 />
-                <div class="flex flex-col">
-                  <span class="font-semibold">{{ channel }}</span>
-                  <UBadge
-                    v-if="getChannelGiveaways(channel)[0]"
-                    :color="getChannelGiveaways(channel)[0].type === 'command' ? 'primary' : getChannelGiveaways(channel)[0].type === 'ticket' ? 'info' : 'warning'"
-                    size="xs"
-                    class="w-fit"
-                  >
-                    {{ getChannelGiveaways(channel)[0].type === 'command' ? 'Commande' : getChannelGiveaways(channel)[0].type === 'ticket' ? 'Ticket' : 'StreamElements' }}
-                  </UBadge>
-                </div>
+                <span class="font-semibold">{{ channel }}</span>
               </div>
 
               <!-- Cadeaux -->
@@ -567,6 +564,15 @@ function handleQualityChange(channel: string, quality: string) {
                   class="w-6 h-6 object-contain"
                 >
               </div>
+
+              <!-- Type de giveaway -->
+              <UBadge
+                v-if="getChannelGiveawayType(channel)"
+                :color="getChannelGiveawayType(channel) === 'command' ? 'primary' : getChannelGiveawayType(channel) === 'ticket' ? 'info' : 'warning'"
+                size="xs"
+              >
+                {{ getChannelGiveawayType(channel) === 'command' ? 'Commande' : getChannelGiveawayType(channel) === 'ticket' ? 'Ticket' : 'StreamElements' }}
+              </UBadge>
 
               <!-- Commande -->
               <div
