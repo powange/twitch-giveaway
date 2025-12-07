@@ -2,9 +2,14 @@ import { getDb } from '../utils/db'
 import { addSSEClient, removeSSEClient } from '../utils/sse'
 
 export default defineEventHandler(async (event) => {
+  // Headers SSE standards
   setResponseHeader(event, 'Content-Type', 'text/event-stream')
-  setResponseHeader(event, 'Cache-Control', 'no-cache')
+  setResponseHeader(event, 'Cache-Control', 'no-cache, no-transform')
   setResponseHeader(event, 'Connection', 'keep-alive')
+
+  // Désactiver le buffering des proxies (nginx, traefik, cloudflare)
+  setResponseHeader(event, 'X-Accel-Buffering', 'no')
+  setResponseHeader(event, 'X-Content-Type-Options', 'nosniff')
 
   const db = await getDb()
 
