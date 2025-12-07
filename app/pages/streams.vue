@@ -638,7 +638,7 @@ function handleQualityChange(channel: string, quality: string) {
               'flex gap-2',
               focusedChannel === channel
                 ? 'flex-1 min-h-0 ' + (showChat[channel] ? 'flex-col lg:flex-row' : '')
-                : (showChat[channel] ? 'flex-col xl:flex-row' : '')
+                : 'aspect-video'
             ]"
           >
             <!-- Player (SDK Twitch) -->
@@ -646,12 +646,12 @@ function handleQualityChange(channel: string, quality: string) {
               :class="[
                 focusedChannel === channel
                   ? 'flex-1 min-h-0'
-                  : 'relative w-full aspect-video'
+                  : 'h-full ' + (showChat[channel] ? 'flex-7' : 'w-full')
               ]"
             >
               <div
                 :id="`player-${channel}`"
-                class="w-full h-full min-h-[300px] [&>iframe]:w-full [&>iframe]:h-full"
+                class="w-full h-full min-h-[200px] [&>iframe]:w-full [&>iframe]:h-full"
               />
             </div>
 
@@ -661,12 +661,12 @@ function handleQualityChange(channel: string, quality: string) {
               :class="[
                 focusedChannel === channel
                   ? 'h-64 lg:h-auto lg:w-96 shrink-0'
-                  : 'xl:w-80 h-80 xl:h-auto'
+                  : 'flex-3 h-full min-w-[250px] max-w-[350px]'
               ]"
             >
               <iframe
                 :src="`https://www.twitch.tv/embed/${channel}/chat?parent=${parentDomain}&darkpopout`"
-                class="w-full h-full min-h-64"
+                class="w-full h-full"
               />
             </div>
           </div>
