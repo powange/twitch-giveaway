@@ -1,3 +1,5 @@
+import { getDb } from './db'
+
 const clients = new Set<ReadableStreamDefaultController>()
 
 export function addSSEClient(controller: ReadableStreamDefaultController) {
@@ -21,7 +23,6 @@ export function notifySSEClients(event: string, data: unknown) {
 }
 
 export async function broadcastUpdate() {
-  const { getDb } = await import('./db')
   const db = await getDb()
   notifySSEClients('update', {
     giveaways: db.data.giveaways,
