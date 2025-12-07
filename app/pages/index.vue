@@ -47,6 +47,24 @@ const gifts = computed(() => {
   return initialData.value.gifts
 })
 
+// Map des cadeaux pour lookup O(1) au lieu de O(n)
+const giftMap = computed(() => new Map(gifts.value.map(g => [g.id, g])))
+
+// Pré-calcul du statut fermé pour éviter les calculs répétés
+function computeIsClosed(giveaway: Giveaway): boolean {
+  if (giveaway.closed) return true
+  const giveawayDate = new Date(giveaway.date)
+  const twoDaysAgo = new Date()
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+  twoDaysAgo.setHours(0, 0, 0, 0)
+  return giveawayDate < twoDaysAgo
+}
+
+// Giveaways avec statut pré-calculé
+const giveawaysWithStatus = computed(() =>
+  giveaways.value.map(g => ({ ...g, isClosed: computeIsClosed(g) }))
+)
+
 // Filtres
 const selectedGifts = ref<string[]>([])
 const selectedStatuses = ref<('open' | 'closed')[]>(['open']) // Par défaut : en cours uniquement
@@ -92,15 +110,14 @@ const availableGifts = computed(() => {
 })
 
 const filteredGiveaways = computed(() => {
-  if (!giveaways.value) return []
+  if (!giveawaysWithStatus.value.length) return []
 
-  let result = giveaways.value
+  let result = giveawaysWithStatus.value
 
-  // Filtrer par statut
+  // Filtrer par statut (utilise isClosed pré-calculé)
   result = result.filter((g) => {
-    const closed = isGiveawayClosed(g)
-    if (closed && selectedStatuses.value.includes('closed')) return true
-    if (!closed && selectedStatuses.value.includes('open')) return true
+    if (g.isClosed && selectedStatuses.value.includes('closed')) return true
+    if (!g.isClosed && selectedStatuses.value.includes('open')) return true
     return false
   })
 
@@ -111,12 +128,9 @@ const filteredGiveaways = computed(() => {
 
   // Trier : en cours d'abord (par date décroissante), puis clos (par date décroissante)
   return [...result].sort((a, b) => {
-    const aClosed = isGiveawayClosed(a)
-    const bClosed = isGiveawayClosed(b)
-
-    // En cours avant clos
-    if (aClosed !== bClosed) {
-      return aClosed ? 1 : -1
+    // En cours avant clos (utilise isClosed pré-calculé)
+    if (a.isClosed !== b.isClosed) {
+      return a.isClosed ? 1 : -1
     }
 
     // Par date décroissante (plus récent d'abord)
@@ -209,8 +223,9 @@ function editGiveaway(giveaway: Giveaway) {
   isModalOpen.value = true
 }
 
+// Lookup O(1) via Map pré-calculée
 function getGift(giftId: string): Gift | undefined {
-  return gifts.value?.find(g => g.id === giftId)
+  return giftMap.value.get(giftId)
 }
 
 async function copyCommand(command: string) {
@@ -228,16 +243,6 @@ async function copyCommand(command: string) {
       color: 'error'
     })
   }
-}
-
-function isGiveawayClosed(giveaway: Giveaway): boolean {
-  if (giveaway.closed) return true
-  // Fermeture automatique après 2 jours
-  const giveawayDate = new Date(giveaway.date)
-  const twoDaysAgo = new Date()
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
-  twoDaysAgo.setHours(0, 0, 0, 0)
-  return giveawayDate < twoDaysAgo
 }
 
 function toggleGiveawayClosed(giveaway: Giveaway) {
@@ -512,7 +517,7 @@ function getTodayDate() {
         <UCard
           v-for="giveaway in filteredGiveaways"
           :key="giveaway.id"
-          :class="{ 'opacity-60': isGiveawayClosed(giveaway) }"
+          :class="{ 'opacity-60': giveaway.isClosed }"
         >
           <template #header>
             <div class="flex justify-between items-start">
@@ -535,10 +540,10 @@ function getTodayDate() {
                 </div>
               </div>
               <UBadge
-                :color="isGiveawayClosed(giveaway) ? 'error' : 'success'"
+                :color="giveaway.isClosed ? 'error' : 'success'"
                 size="xs"
               >
-                {{ isGiveawayClosed(giveaway) ? 'Clos' : 'En cours' }}
+                {{ giveaway.isClosed ? 'Clos' : 'En cours' }}
               </UBadge>
             </div>
           </template>
