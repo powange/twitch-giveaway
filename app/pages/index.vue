@@ -148,8 +148,7 @@ function toggleGiftFilter(giftId: string) {
 }
 
 const isModalOpen = ref(false)
-const isLoading = ref(false)
-const editingId = ref<string | null>(null)
+const editingGiveaway = ref<Giveaway | null>(null)
 
 // Confirmation modals
 const confirmModalOpen = ref(false)
@@ -176,50 +175,13 @@ async function executeConfirmedAction() {
   confirmGiveaway.value = null
 }
 
-const form = reactive({
-  twitchChannel: '',
-  date: '',
-  giftIds: [] as string[],
-  type: 'command' as 'command' | 'ticket' | 'streamelements',
-  command: '',
-  streamElementsUrl: '',
-  drawTime: '',
-  requireFollow: false
-})
-
-const giveawayTypes = [
-  { label: 'Commande', value: 'command' },
-  { label: 'Ticket', value: 'ticket' },
-  { label: 'StreamElements', value: 'streamelements' }
-]
-
-function resetForm() {
-  form.twitchChannel = ''
-  form.date = getTodayDate()
-  form.giftIds = []
-  form.type = 'command'
-  form.command = ''
-  form.streamElementsUrl = ''
-  form.drawTime = ''
-  form.requireFollow = false
-  editingId.value = null
-}
-
 function openNewGiveaway() {
-  resetForm()
+  editingGiveaway.value = null
   isModalOpen.value = true
 }
 
 function editGiveaway(giveaway: Giveaway) {
-  editingId.value = giveaway.id
-  form.twitchChannel = giveaway.twitchChannel
-  form.date = giveaway.date
-  form.giftIds = [...giveaway.giftIds]
-  form.type = giveaway.type
-  form.command = giveaway.command || ''
-  form.streamElementsUrl = giveaway.streamElementsUrl || ''
-  form.drawTime = giveaway.drawTime || ''
-  form.requireFollow = giveaway.requireFollow
+  editingGiveaway.value = giveaway
   isModalOpen.value = true
 }
 
@@ -272,70 +234,6 @@ async function doToggleGiveawayClosed(giveaway: Giveaway) {
   }
 }
 
-function toggleFormGift(giftId: string) {
-  const index = form.giftIds.indexOf(giftId)
-  if (index === -1) {
-    form.giftIds.push(giftId)
-  } else {
-    form.giftIds.splice(index, 1)
-  }
-}
-
-async function saveGiveaway() {
-  if (!form.twitchChannel || !form.date) {
-    toast.add({
-      title: 'Erreur',
-      description: 'La chaine Twitch et la date sont requis',
-      color: 'error'
-    })
-    return
-  }
-
-  isLoading.value = true
-  try {
-    if (editingId.value) {
-      // Mode édition
-      await $fetch(`/api/giveaways/${editingId.value}`, {
-        method: 'PUT',
-        body: {
-          ...form,
-          drawTime: form.drawTime || undefined
-        }
-      })
-      toast.add({
-        title: 'Succes',
-        description: 'Giveaway modifie avec succes',
-        color: 'success'
-      })
-    } else {
-      // Mode création
-      await $fetch('/api/giveaways', {
-        method: 'POST',
-        body: {
-          ...form,
-          drawTime: form.drawTime || undefined
-        }
-      })
-      toast.add({
-        title: 'Succes',
-        description: 'Giveaway ajoute avec succes',
-        color: 'success'
-      })
-    }
-    resetForm()
-    isModalOpen.value = false
-    // SSE met à jour automatiquement les données
-  } catch {
-    toast.add({
-      title: 'Erreur',
-      description: editingId.value ? 'Impossible de modifier le giveaway' : 'Impossible d\'ajouter le giveaway',
-      color: 'error'
-    })
-  } finally {
-    isLoading.value = false
-  }
-}
-
 function deleteGiveaway(giveaway: Giveaway) {
   askConfirmation('delete', giveaway)
 }
@@ -378,10 +276,6 @@ function getStreamerName(channel: string) {
 function getTwitchUrl(channel: string) {
   const name = getStreamerName(channel)
   return `https://twitch.tv/${name}`
-}
-
-function getTodayDate() {
-  return new Date().toISOString().split('T')[0]
 }
 </script>
 
@@ -677,130 +571,11 @@ function getTodayDate() {
       </div>
     </template>
 
-    <UModal
+    <GiveawayModal
       v-model:open="isModalOpen"
-      @close="resetForm"
-    >
-      <template #content>
-        <UCard>
-          <template #header>
-            <h2 class="text-xl font-semibold">
-              {{ editingId ? 'Modifier le Giveaway' : 'Nouveau Giveaway' }}
-            </h2>
-          </template>
-
-          <form
-            class="space-y-4"
-            @submit.prevent="saveGiveaway"
-          >
-            <UFormField
-              label="URL de la chaine Twitch"
-              required
-            >
-              <UInput
-                v-model="form.twitchChannel"
-                placeholder="https://twitch.tv/nom_de_la_chaine"
-                class="w-full"
-              />
-            </UFormField>
-
-            <UFormField
-              label="Date du giveaway"
-              required
-            >
-              <UInput
-                v-model="form.date"
-                type="date"
-                class="w-full"
-              />
-            </UFormField>
-
-            <UFormField label="Cadeaux">
-              <div class="flex flex-wrap gap-2">
-                <UButton
-                  v-for="gift in gifts"
-                  :key="gift.id"
-                  :color="form.giftIds.includes(gift.id) ? 'primary' : 'neutral'"
-                  :variant="form.giftIds.includes(gift.id) ? 'solid' : 'outline'"
-                  size="sm"
-                  @click="toggleFormGift(gift.id)"
-                >
-                  <img
-                    :src="gift.image"
-                    :alt="gift.title"
-                    class="w-4 h-4 object-contain mr-1"
-                  >
-                  {{ gift.title }}
-                </UButton>
-              </div>
-            </UFormField>
-
-            <UFormField
-              label="Type de giveaway"
-              required
-            >
-              <URadioGroup
-                v-model="form.type"
-                :items="giveawayTypes"
-              />
-            </UFormField>
-
-            <UFormField
-              v-if="form.type === 'command'"
-              label="Commande chat"
-            >
-              <UInput
-                v-model="form.command"
-                placeholder="!giveaway"
-                class="w-full"
-              />
-            </UFormField>
-
-            <UFormField
-              v-if="form.type === 'streamelements'"
-              label="URL StreamElements"
-              required
-            >
-              <UInput
-                v-model="form.streamElementsUrl"
-                placeholder="https://streamelements.com/..."
-                class="w-full"
-              />
-            </UFormField>
-
-            <UFormField label="Heure du tirage">
-              <UInput
-                v-model="form.drawTime"
-                type="time"
-                placeholder="Optionnel"
-                class="w-full"
-              />
-            </UFormField>
-
-            <UFormField>
-              <UCheckbox
-                v-model="form.requireFollow"
-                label="Follow requis pour participer"
-              />
-            </UFormField>
-
-            <div class="flex justify-end gap-2 pt-4">
-              <UButton
-                label="Annuler"
-                color="neutral"
-                variant="outline"
-                @click="isModalOpen = false"
-              />
-              <UButton
-                type="submit"
-                :label="editingId ? 'Modifier' : 'Ajouter'"
-                :loading="isLoading"
-              />
-            </div>
-          </form>
-        </UCard>
-      </template>
-    </UModal>
+      :giveaway="editingGiveaway"
+      :gifts="gifts"
+    />
 
     <!-- Modal de confirmation -->
     <UModal v-model:open="confirmModalOpen">

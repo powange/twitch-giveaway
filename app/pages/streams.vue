@@ -157,6 +157,19 @@ const focusedChannel = ref<string | null>(null)
 const confirmDeleteOpen = ref(false)
 const channelToDelete = ref<string | null>(null)
 
+// Edition giveaway
+const editModalOpen = ref(false)
+const editingGiveaway = ref<typeof activeGiveaways.value[0] | null>(null)
+
+function openEditGiveaway(channel: string) {
+  const channelGiveaways = getChannelGiveaways(channel)
+  const first = channelGiveaways[0]
+  if (first) {
+    editingGiveaway.value = first
+    editModalOpen.value = true
+  }
+}
+
 // Charger depuis localStorage au montage
 onMounted(() => {
   const saved = localStorage.getItem('selectedStreams')
@@ -515,6 +528,14 @@ function handleQualityChange(channel: string, quality: string) {
           <div class="flex justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-800">
             <div class="flex items-center gap-3 flex-wrap">
               <div class="flex items-center gap-2">
+                <UButton
+                  icon="i-lucide-pencil"
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  title="Modifier le giveaway"
+                  @click="openEditGiveaway(channel)"
+                />
                 <UIcon
                   name="i-simple-icons-twitch"
                   class="w-4 h-4 text-purple-500"
@@ -605,20 +626,20 @@ function handleQualityChange(channel: string, quality: string) {
                 @click="openAlertModal(channel)"
               />
               <UButton
-                :icon="focusedChannel === channel ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                :title="focusedChannel === channel ? 'Reduire' : 'Agrandir'"
-                @click="toggleFocus(channel)"
-              />
-              <UButton
                 :icon="showChat[channel] ? 'i-lucide-message-square-off' : 'i-lucide-message-square'"
                 size="xs"
                 :color="showChat[channel] ? 'primary' : 'neutral'"
                 variant="ghost"
                 :title="showChat[channel] ? 'Masquer le chat' : 'Afficher le chat'"
                 @click="toggleChat(channel)"
+              />
+              <UButton
+                :icon="focusedChannel === channel ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                :title="focusedChannel === channel ? 'Reduire' : 'Agrandir'"
+                @click="toggleFocus(channel)"
               />
               <UButton
                 v-if="focusedChannel !== channel"
@@ -750,5 +771,12 @@ function handleQualityChange(channel: string, quality: string) {
         </UCard>
       </template>
     </UModal>
+
+    <!-- Modal edition giveaway -->
+    <GiveawayModal
+      v-model:open="editModalOpen"
+      :giveaway="editingGiveaway"
+      :gifts="gifts"
+    />
   </UContainer>
 </template>
