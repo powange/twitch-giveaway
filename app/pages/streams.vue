@@ -304,7 +304,7 @@ const gridClass = computed(() => {
   const count = selectedChannels.value.length
   if (count === 1) return 'grid-cols-1'
   if (count === 2) return 'grid-cols-1 lg:grid-cols-2'
-  return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+  return 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
 })
 
 // Parent domain pour l'embed Twitch (chat uniquement)
