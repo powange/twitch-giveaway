@@ -361,6 +361,12 @@ function getChannelGiveawayType(channel: string) {
   return getChannelGiveaways(channel)[0]?.type
 }
 
+// Vérifier si un canal a un giveaway clos
+function hasClosedGiveaway(channel: string) {
+  const channelGiveaways = giveaways.value?.filter(g => getStreamerName(g.twitchChannel) === channel) || []
+  return channelGiveaways.length > 0 && channelGiveaways.every(g => isGiveawayClosed(g))
+}
+
 // Copier la commande dans le presse-papier
 async function copyCommand(command: string) {
   try {
@@ -527,7 +533,9 @@ function handleQualityChange(channel: string, quality: string) {
             'rounded-lg border-2 bg-white dark:bg-gray-900 overflow-hidden transition-all',
             alertedChannel === channel
               ? 'border-orange-500 ring-4 ring-orange-500/50 animate-pulse'
-              : 'border-gray-200 dark:border-gray-800',
+              : hasClosedGiveaway(channel)
+                ? 'border-red-500'
+                : 'border-gray-200 dark:border-gray-800',
             focusedChannel === channel ? 'h-full flex flex-col' : ''
           ]"
         >
