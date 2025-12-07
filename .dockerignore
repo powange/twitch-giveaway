@@ -9,3 +9,7 @@ node_modules
 .idea
 .fleet
 .vscode
+data
+*.log
+Dockerfile
+docker-compose*.yml

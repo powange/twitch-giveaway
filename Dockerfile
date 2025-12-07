@@ -18,18 +18,14 @@ FROM base AS runner
 
 ENV NODE_ENV=production
 
-# Install wget for healthcheck
-RUN apk add --no-cache wget
+# Setup: wget for healthcheck, user, data folder
+RUN apk add --no-cache wget \
+    && addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nuxtjs \
+    && mkdir -p ./data \
+    && chown nuxtjs:nodejs ./data
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nuxtjs
-
-COPY --from=builder /app/.output ./.output
-
-# Créer le dossier data (sera monté en volume)
-RUN mkdir -p ./data
-
-RUN chown -R nuxtjs:nodejs /app
+COPY --from=builder --chown=nuxtjs:nodejs /app/.output ./.output
 
 USER nuxtjs
 
