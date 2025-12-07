@@ -38,7 +38,8 @@ const navItems = [
         </NuxtLink>
       </template>
 
-      <nav class="flex items-center gap-4">
+      <!-- Navigation desktop -->
+      <nav class="hidden md:flex items-center gap-4">
         <ULink
           v-for="item in navItems"
           :key="item.to"
@@ -51,6 +52,23 @@ const navItems = [
           {{ item.label }}
         </ULink>
       </nav>
+
+      <!-- Navigation mobile (dans le menu déroulant) -->
+      <template #body>
+        <nav class="flex flex-col gap-2 p-4">
+          <ULink
+            v-for="item in navItems"
+            :key="item.to"
+            :to="item.to"
+            active-class="text-primary"
+            inactive-class="text-muted hover:text-foreground"
+            class="flex items-center gap-2 py-2 text-sm font-medium transition-colors"
+          >
+            <UIcon :name="item.icon" class="w-5 h-5" />
+            {{ item.label }}
+          </ULink>
+        </nav>
+      </template>
 
       <template #right>
         <UColorModeButton />
