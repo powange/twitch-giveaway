@@ -11,8 +11,9 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     // Variables privées (côté serveur uniquement)
-    twitchClientId: process.env.TWITCH_CLIENT_ID,
-    twitchClientSecret: process.env.TWITCH_CLIENT_SECRET
+    // Utilise NUXT_TWITCH_CLIENT_ID et NUXT_TWITCH_CLIENT_SECRET au runtime
+    twitchClientId: '',
+    twitchClientSecret: ''
   },
 
   css: ['~/assets/css/main.css'],

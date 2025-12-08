@@ -11,8 +11,8 @@ services:
       - giveaway-data:/app/data
     environment:
       - NODE_ENV=production
-      - TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}
-      - TWITCH_CLIENT_SECRET=${TWITCH_CLIENT_SECRET}
+      - NUXT_TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}
+      - NUXT_TWITCH_CLIENT_SECRET=${TWITCH_CLIENT_SECRET}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
