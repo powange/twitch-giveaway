@@ -152,6 +152,7 @@ const gifts = computed(() => isInitialized.value ? sseGifts.value : (initialGift
 const selectedChannels = ref<string[]>([])
 const showChat = ref<Record<string, boolean>>({})
 const focusedChannel = ref<string | null>(null)
+const gridDensity = ref<'compact' | 'normal' | 'comfortable'>('normal')
 
 // Confirmation suppression
 const confirmDeleteOpen = ref(false)
@@ -178,6 +179,9 @@ onMounted(() => {
       const parsed = JSON.parse(saved)
       selectedChannels.value = parsed.channels || []
       showChat.value = parsed.showChat || {}
+      if (parsed.gridDensity && ['compact', 'normal', 'comfortable'].includes(parsed.gridDensity)) {
+        gridDensity.value = parsed.gridDensity
+      }
     } catch { /* ignore */ }
   }
 
@@ -205,10 +209,11 @@ onBeforeRouteLeave(() => {
 })
 
 // Sauvegarder dans localStorage à chaque modification
-watch([selectedChannels, showChat], () => {
+watch([selectedChannels, showChat, gridDensity], () => {
   localStorage.setItem('selectedStreams', JSON.stringify({
     channels: selectedChannels.value,
-    showChat: showChat.value
+    showChat: showChat.value,
+    gridDensity: gridDensity.value
   }))
 }, { deep: true })
 
@@ -312,12 +317,20 @@ function toggleFocus(channel: string) {
   focusedChannel.value = focusedChannel.value === channel ? null : channel
 }
 
-// Calculer la grille en fonction du nombre de streams
+// Calculer la grille en fonction de la densité choisie
 const gridClass = computed(() => {
-  const count = selectedChannels.value.length
-  if (count === 1) return 'grid-cols-1'
-  if (count === 2) return 'grid-cols-1 lg:grid-cols-2'
-  return 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
+  switch (gridDensity.value) {
+    case 'compact':
+      // Max 5 colonnes : 1 -> 2 -> 3 -> 4 -> 5
+      return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+    case 'comfortable':
+      // Max 2 colonnes : 1 -> 2
+      return 'grid-cols-1 lg:grid-cols-2'
+    case 'normal':
+    default:
+      // Max 3 colonnes : 1 -> 2 -> 3
+      return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+  }
 })
 
 // Parent domain pour l'embed Twitch (chat uniquement)
@@ -452,40 +465,75 @@ function handleQualityChange(channel: string, quality: string) {
     <!-- Controles globaux -->
     <div
       v-if="selectedChannels.length"
-      class="flex justify-end gap-2 mb-4"
+      class="flex flex-wrap justify-between items-center gap-2 mb-4"
     >
-      <UButton
-        :icon="globalPaused ? 'i-lucide-play' : 'i-lucide-pause'"
-        :label="globalPaused ? 'Tout lire' : 'Tout mettre en pause'"
-        :color="globalPaused ? 'success' : 'neutral'"
-        variant="outline"
-        size="sm"
-        @click="togglePlayPauseAll"
-      />
-      <UButton
-        :icon="globalMuted ? 'i-lucide-volume-x' : 'i-lucide-volume-2'"
-        :label="globalMuted ? 'Activer le son' : 'Couper le son'"
-        :color="globalMuted ? 'warning' : 'neutral'"
-        variant="outline"
-        size="sm"
-        @click="toggleMuteAll"
-      />
-      <UButton
-        icon="i-lucide-volume-1"
-        label="Son 1%"
-        color="neutral"
-        variant="outline"
-        size="sm"
-        @click="setLowVolumeAll"
-      />
-      <UButton
-        :icon="globalLowQuality ? 'i-lucide-signal' : 'i-lucide-signal-low'"
-        :label="globalLowQuality ? 'Qualite auto' : 'Qualite basse'"
-        :color="globalLowQuality ? 'info' : 'neutral'"
-        variant="outline"
-        size="sm"
-        @click="toggleQualityAll"
-      />
+      <!-- Densité de la grille -->
+      <div class="flex items-center gap-1">
+        <UIcon
+          name="i-lucide-layout-grid"
+          class="w-4 h-4 text-muted mr-1"
+        />
+        <UButton
+          icon="i-lucide-rectangle-horizontal"
+          title="Confortable (max 2)"
+          :color="gridDensity === 'comfortable' ? 'primary' : 'neutral'"
+          :variant="gridDensity === 'comfortable' ? 'solid' : 'outline'"
+          size="xs"
+          @click="gridDensity = 'comfortable'"
+        />
+        <UButton
+          icon="i-lucide-layout-grid"
+          title="Normal (max 3)"
+          :color="gridDensity === 'normal' ? 'primary' : 'neutral'"
+          :variant="gridDensity === 'normal' ? 'solid' : 'outline'"
+          size="xs"
+          @click="gridDensity = 'normal'"
+        />
+        <UButton
+          icon="i-lucide-grid-3x3"
+          title="Compact (max 5)"
+          :color="gridDensity === 'compact' ? 'primary' : 'neutral'"
+          :variant="gridDensity === 'compact' ? 'solid' : 'outline'"
+          size="xs"
+          @click="gridDensity = 'compact'"
+        />
+      </div>
+
+      <!-- Controles lecture/son/qualité -->
+      <div class="flex gap-2">
+        <UButton
+          :icon="globalPaused ? 'i-lucide-play' : 'i-lucide-pause'"
+          :label="globalPaused ? 'Tout lire' : 'Tout mettre en pause'"
+          :color="globalPaused ? 'success' : 'neutral'"
+          variant="outline"
+          size="sm"
+          @click="togglePlayPauseAll"
+        />
+        <UButton
+          :icon="globalMuted ? 'i-lucide-volume-x' : 'i-lucide-volume-2'"
+          :label="globalMuted ? 'Activer le son' : 'Couper le son'"
+          :color="globalMuted ? 'warning' : 'neutral'"
+          variant="outline"
+          size="sm"
+          @click="toggleMuteAll"
+        />
+        <UButton
+          icon="i-lucide-volume-1"
+          label="Son 1%"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          @click="setLowVolumeAll"
+        />
+        <UButton
+          :icon="globalLowQuality ? 'i-lucide-signal' : 'i-lucide-signal-low'"
+          :label="globalLowQuality ? 'Qualite auto' : 'Qualite basse'"
+          :color="globalLowQuality ? 'info' : 'neutral'"
+          variant="outline"
+          size="sm"
+          @click="toggleQualityAll"
+        />
+      </div>
     </div>
 
     <!-- Streams -->
