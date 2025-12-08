@@ -154,6 +154,108 @@ const showChat = ref<Record<string, boolean>>({})
 const focusedChannel = ref<string | null>(null)
 const gridDensity = ref<'compact' | 'normal' | 'comfortable'>('normal')
 
+// Ordre visuel des streams (séparé de selectedChannels pour éviter de recharger les players)
+const channelOrder = ref<Record<string, number>>({})
+
+// Initialiser l'ordre quand les channels changent
+watch(selectedChannels, (channels) => {
+  let maxOrder = Math.max(0, ...Object.values(channelOrder.value))
+
+  channels.forEach((c) => {
+    if (!(c in channelOrder.value)) {
+      channelOrder.value[c] = ++maxOrder
+    }
+  })
+
+  // Nettoyer les channels supprimés - recréer l'objet sans les channels supprimés
+  const newOrder: Record<string, number> = {}
+  Object.entries(channelOrder.value).forEach(([c, order]) => {
+    if (channels.includes(c)) {
+      newOrder[c] = order
+    }
+  })
+  channelOrder.value = newOrder
+}, { immediate: true, deep: true })
+
+function getChannelOrder(channel: string): number {
+  return channelOrder.value[channel] ?? 0
+}
+
+// Drag & drop state
+const draggedChannel = ref<string | null>(null)
+const dragOverChannel = ref<string | null>(null)
+const dropPosition = ref<'left' | 'right' | null>(null)
+const justSwappedChannels = ref<Set<string>>(new Set())
+
+function onDragStart(channel: string, e: DragEvent) {
+  draggedChannel.value = channel
+  justSwappedChannels.value.clear()
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', channel)
+  }
+}
+
+function onDragOver(channel: string, e: DragEvent) {
+  e.preventDefault()
+  if (draggedChannel.value && channel !== draggedChannel.value) {
+    dragOverChannel.value = channel
+
+    // Détecter si la souris est à gauche ou à droite de la cible
+    const target = e.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    const midpoint = rect.left + rect.width / 2
+    dropPosition.value = e.clientX < midpoint ? 'left' : 'right'
+  }
+}
+
+function onDragLeave() {
+  dragOverChannel.value = null
+  dropPosition.value = null
+}
+
+// Normaliser les ordres pour qu'ils soient des entiers consécutifs
+function normalizeOrders() {
+  const entries = Object.entries(channelOrder.value)
+    .sort((a, b) => a[1] - b[1])
+
+  const newOrder: Record<string, number> = {}
+  entries.forEach(([channel], index) => {
+    newOrder[channel] = index + 1
+  })
+  channelOrder.value = newOrder
+}
+
+function onDrop(channel: string, e: DragEvent) {
+  e.preventDefault()
+  if (draggedChannel.value && draggedChannel.value !== channel) {
+    const targetOrder = channelOrder.value[channel] ?? 0
+
+    // Insérer avant ou après la cible selon la position
+    if (dropPosition.value === 'left') {
+      channelOrder.value[draggedChannel.value] = targetOrder - 0.5
+    } else {
+      channelOrder.value[draggedChannel.value] = targetOrder + 0.5
+    }
+
+    // Normaliser pour avoir des entiers
+    normalizeOrders()
+
+    // Marquer le channel pour l'animation
+    justSwappedChannels.value = new Set([draggedChannel.value])
+    setTimeout(() => justSwappedChannels.value.clear(), 400)
+  }
+  draggedChannel.value = null
+  dragOverChannel.value = null
+  dropPosition.value = null
+}
+
+function onDragEnd() {
+  draggedChannel.value = null
+  dragOverChannel.value = null
+  dropPosition.value = null
+}
+
 // Confirmation suppression
 const confirmDeleteOpen = ref(false)
 const channelToDelete = ref<string | null>(null)
@@ -182,6 +284,9 @@ onMounted(() => {
       if (parsed.gridDensity && ['compact', 'normal', 'comfortable'].includes(parsed.gridDensity)) {
         gridDensity.value = parsed.gridDensity
       }
+      if (parsed.channelOrder) {
+        channelOrder.value = parsed.channelOrder
+      }
     } catch { /* ignore */ }
   }
 
@@ -209,11 +314,12 @@ onBeforeRouteLeave(() => {
 })
 
 // Sauvegarder dans localStorage à chaque modification
-watch([selectedChannels, showChat, gridDensity], () => {
+watch([selectedChannels, showChat, gridDensity, channelOrder], () => {
   localStorage.setItem('selectedStreams', JSON.stringify({
     channels: selectedChannels.value,
     showChat: showChat.value,
-    gridDensity: gridDensity.value
+    gridDensity: gridDensity.value,
+    channelOrder: channelOrder.value
   }))
 }, { deep: true })
 
@@ -546,10 +652,7 @@ function handleQualityChange(channel: string, quality: string) {
       </p>
     </div>
 
-    <div
-      v-else
-      :class="['grid gap-4', gridClass]"
-    >
+    <div v-else>
       <!-- Backdrop quand un stream est focus -->
       <div
         v-if="focusedChannel"
@@ -557,203 +660,228 @@ function handleQualityChange(channel: string, quality: string) {
         @click="focusedChannel = null"
       />
 
-      <div
-        v-for="channel in selectedChannels"
-        :key="channel"
-        :class="[
-          'transition-all duration-300',
-          focusedChannel === channel
-            ? 'fixed inset-4 z-50 flex flex-col'
-            : focusedChannel
-              ? 'opacity-0 pointer-events-none'
-              : ''
-        ]"
-      >
+      <div :class="['grid gap-4 overflow-visible', gridClass]">
         <div
+          v-for="channel in selectedChannels"
+          :key="channel"
+          :style="{ order: getChannelOrder(channel) }"
           :class="[
-            'rounded-lg border-2 bg-white dark:bg-gray-900 overflow-hidden transition-all',
-            alertedChannel === channel
-              ? 'border-orange-500 ring-4 ring-orange-500/50 animate-pulse'
-              : hasClosedGiveaway(channel)
-                ? 'border-red-500'
-                : 'border-gray-200 dark:border-gray-800',
-            focusedChannel === channel ? 'h-full flex flex-col' : ''
+            'stream-card',
+            focusedChannel === channel
+              ? 'fixed inset-4 z-50 flex flex-col'
+              : focusedChannel
+                ? 'opacity-0 pointer-events-none'
+                : '',
+            draggedChannel === channel ? 'dragging' : '',
+            justSwappedChannels.has(channel) ? 'just-swapped' : ''
           ]"
+          :draggable="!focusedChannel"
+          @dragstart="onDragStart(channel, $event)"
+          @dragover="onDragOver(channel, $event)"
+          @dragleave="onDragLeave"
+          @drop="onDrop(channel, $event)"
+          @dragend="onDragEnd"
         >
-          <!-- Header -->
-          <div class="flex justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-            <div class="flex items-center gap-3 flex-wrap">
-              <div class="flex items-center gap-2">
-                <UButton
-                  icon="i-lucide-pencil"
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  title="Modifier le giveaway"
-                  @click="openEditGiveaway(channel)"
-                />
-                <UIcon
-                  name="i-simple-icons-twitch"
-                  class="w-4 h-4 text-purple-500"
-                />
-                <span class="font-semibold">{{ channel }}</span>
-              </div>
-
-              <!-- Cadeaux -->
-              <div
-                v-if="getChannelGifts(channel).length"
-                class="flex items-center gap-1"
-              >
-                <img
-                  v-for="gift in getChannelGifts(channel)"
-                  :key="gift.id"
-                  :src="gift.image"
-                  :alt="gift.title"
-                  :title="gift.title"
-                  class="w-6 h-6 object-contain"
-                >
-              </div>
-
-              <!-- Type de giveaway -->
-              <UBadge
-                v-if="getChannelGiveawayType(channel)"
-                :color="getChannelGiveawayType(channel) === 'command' ? 'primary' : getChannelGiveawayType(channel) === 'ticket' ? 'info' : 'warning'"
-                size="xs"
-              >
-                {{ getChannelGiveawayType(channel) === 'command' ? 'Commande' : getChannelGiveawayType(channel) === 'ticket' ? 'Ticket' : 'StreamElements' }}
-              </UBadge>
-
-              <!-- Commande -->
-              <div
-                v-if="getChannelCommand(channel)"
-                class="flex items-center gap-1"
-              >
-                <code class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-xs">{{ getChannelCommand(channel) }}</code>
-                <UButton
-                  icon="i-lucide-copy"
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  title="Copier la commande"
-                  @click="copyCommand(getChannelCommand(channel)!)"
-                />
-              </div>
-
-              <!-- StreamElements -->
-              <a
-                v-if="getChannelStreamElementsUrl(channel)"
-                :href="getChannelStreamElementsUrl(channel)"
-                target="_blank"
-                class="flex items-center gap-1 text-xs text-primary hover:underline"
-              >
-                <UIcon
-                  name="i-lucide-ticket"
-                  class="w-3 h-3"
-                />
-                StreamElements
-                <UIcon
-                  name="i-lucide-external-link"
-                  class="w-3 h-3"
-                />
-              </a>
-
-              <!-- Selecteur de qualité -->
-              <div
-                v-if="getQualityOptions(channel).length > 0"
-                class="flex items-center gap-1"
-              >
-                <UIcon
-                  name="i-lucide-settings-2"
-                  class="w-3 h-3 text-muted"
-                />
-                <select
-                  :value="currentQuality.get(channel) || 'auto'"
-                  class="text-xs bg-gray-100 dark:bg-gray-800 border-0 rounded px-2 py-1 cursor-pointer"
-                  @change="handleQualityChange(channel, ($event.target as HTMLSelectElement).value)"
-                >
-                  <option
-                    v-for="option in getQualityOptions(channel)"
-                    :key="option.value"
-                    :value="option.value"
-                  >
-                    {{ option.label }}
-                  </option>
-                </select>
-              </div>
-            </div>
-            <div class="flex gap-1">
-              <UButton
-                icon="i-lucide-bell-ring"
-                size="xs"
-                color="warning"
-                variant="ghost"
-                title="Alerter: C'est le moment du tirage !"
-                @click="openAlertModal(channel)"
-              />
-              <UButton
-                :icon="showChat[channel] ? 'i-lucide-message-square-off' : 'i-lucide-message-square'"
-                size="xs"
-                :color="showChat[channel] ? 'primary' : 'neutral'"
-                variant="ghost"
-                :title="showChat[channel] ? 'Masquer le chat' : 'Afficher le chat'"
-                @click="toggleChat(channel)"
-              />
-              <UButton
-                :icon="focusedChannel === channel ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                :title="focusedChannel === channel ? 'Reduire' : 'Agrandir'"
-                @click="toggleFocus(channel)"
-              />
-              <UButton
-                v-if="focusedChannel !== channel"
-                icon="i-lucide-x"
-                size="xs"
-                color="error"
-                variant="ghost"
-                title="Fermer"
-                @click="askRemoveStream(channel)"
-              />
-            </div>
-          </div>
-
-          <!-- Content -->
           <div
             :class="[
-              'flex gap-2',
-              focusedChannel === channel
-                ? 'flex-1 min-h-0 ' + (showChat[channel] ? 'flex-col lg:flex-row' : '')
-                : 'aspect-video'
+              'card-inner rounded-lg border-2 bg-white dark:bg-gray-900 overflow-hidden transition-all',
+              alertedChannel === channel
+                ? 'border-orange-500 ring-4 ring-orange-500/50 animate-pulse'
+                : hasClosedGiveaway(channel)
+                  ? 'border-red-500'
+                  : 'border-gray-200 dark:border-gray-800',
+              focusedChannel === channel ? 'h-full flex flex-col' : ''
             ]"
           >
-            <!-- Player (SDK Twitch) -->
+            <!-- Indicateur de drop -->
             <div
-              :class="[
-                focusedChannel === channel
-                  ? 'flex-1 min-h-0'
-                  : 'h-full ' + (showChat[channel] ? 'flex-7' : 'w-full')
-              ]"
-            >
-              <div
-                :id="`player-${channel}`"
-                class="w-full h-full min-h-[200px] [&>iframe]:w-full [&>iframe]:h-full"
-              />
+              v-if="dragOverChannel === channel && dropPosition === 'left'"
+              class="drop-indicator drop-indicator-left"
+            />
+            <div
+              v-if="dragOverChannel === channel && dropPosition === 'right'"
+              class="drop-indicator drop-indicator-right"
+            />
+            <!-- Header -->
+            <div class="flex justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+              <div class="flex items-center gap-3 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <UIcon
+                    name="i-lucide-grip-vertical"
+                    class="drag-handle w-4 h-4 text-muted cursor-grab active:cursor-grabbing"
+                    title="Glisser pour réorganiser"
+                  />
+                  <UButton
+                    icon="i-lucide-pencil"
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    title="Modifier le giveaway"
+                    @click="openEditGiveaway(channel)"
+                  />
+                  <UIcon
+                    name="i-simple-icons-twitch"
+                    class="w-4 h-4 text-purple-500"
+                  />
+                  <span class="font-semibold">{{ channel }}</span>
+                </div>
+
+                <!-- Cadeaux -->
+                <div
+                  v-if="getChannelGifts(channel).length"
+                  class="flex items-center gap-1"
+                >
+                  <img
+                    v-for="gift in getChannelGifts(channel)"
+                    :key="gift.id"
+                    :src="gift.image"
+                    :alt="gift.title"
+                    :title="gift.title"
+                    class="w-6 h-6 object-contain"
+                  >
+                </div>
+
+                <!-- Type de giveaway -->
+                <UBadge
+                  v-if="getChannelGiveawayType(channel)"
+                  :color="getChannelGiveawayType(channel) === 'command' ? 'primary' : getChannelGiveawayType(channel) === 'ticket' ? 'info' : 'warning'"
+                  size="xs"
+                >
+                  {{ getChannelGiveawayType(channel) === 'command' ? 'Commande' : getChannelGiveawayType(channel) === 'ticket' ? 'Ticket' : 'StreamElements' }}
+                </UBadge>
+
+                <!-- Commande -->
+                <div
+                  v-if="getChannelCommand(channel)"
+                  class="flex items-center gap-1"
+                >
+                  <code class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-xs">{{ getChannelCommand(channel) }}</code>
+                  <UButton
+                    icon="i-lucide-copy"
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    title="Copier la commande"
+                    @click="copyCommand(getChannelCommand(channel)!)"
+                  />
+                </div>
+
+                <!-- StreamElements -->
+                <a
+                  v-if="getChannelStreamElementsUrl(channel)"
+                  :href="getChannelStreamElementsUrl(channel)"
+                  target="_blank"
+                  class="flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <UIcon
+                    name="i-lucide-ticket"
+                    class="w-3 h-3"
+                  />
+                  StreamElements
+                  <UIcon
+                    name="i-lucide-external-link"
+                    class="w-3 h-3"
+                  />
+                </a>
+
+                <!-- Selecteur de qualité -->
+                <div
+                  v-if="getQualityOptions(channel).length > 0"
+                  class="flex items-center gap-1"
+                >
+                  <UIcon
+                    name="i-lucide-settings-2"
+                    class="w-3 h-3 text-muted"
+                  />
+                  <select
+                    :value="currentQuality.get(channel) || 'auto'"
+                    class="text-xs bg-gray-100 dark:bg-gray-800 border-0 rounded px-2 py-1 cursor-pointer"
+                    @change="handleQualityChange(channel, ($event.target as HTMLSelectElement).value)"
+                  >
+                    <option
+                      v-for="option in getQualityOptions(channel)"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex gap-1">
+                <UButton
+                  icon="i-lucide-bell-ring"
+                  size="xs"
+                  color="warning"
+                  variant="ghost"
+                  title="Alerter: C'est le moment du tirage !"
+                  @click="openAlertModal(channel)"
+                />
+                <UButton
+                  :icon="showChat[channel] ? 'i-lucide-message-square-off' : 'i-lucide-message-square'"
+                  size="xs"
+                  :color="showChat[channel] ? 'primary' : 'neutral'"
+                  variant="ghost"
+                  :title="showChat[channel] ? 'Masquer le chat' : 'Afficher le chat'"
+                  @click="toggleChat(channel)"
+                />
+                <UButton
+                  :icon="focusedChannel === channel ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  :title="focusedChannel === channel ? 'Reduire' : 'Agrandir'"
+                  @click="toggleFocus(channel)"
+                />
+                <UButton
+                  v-if="focusedChannel !== channel"
+                  icon="i-lucide-x"
+                  size="xs"
+                  color="error"
+                  variant="ghost"
+                  title="Fermer"
+                  @click="askRemoveStream(channel)"
+                />
+              </div>
             </div>
 
-            <!-- Chat -->
+            <!-- Content -->
             <div
-              v-if="showChat[channel]"
               :class="[
+                'flex gap-2',
                 focusedChannel === channel
-                  ? 'h-64 lg:h-auto lg:w-96 shrink-0'
-                  : 'flex-3 h-full min-w-[250px] max-w-[350px]'
+                  ? 'flex-1 min-h-0 ' + (showChat[channel] ? 'flex-col lg:flex-row' : '')
+                  : 'aspect-video'
               ]"
             >
-              <iframe
-                :src="`https://www.twitch.tv/embed/${channel}/chat?parent=${parentDomain}&darkpopout`"
-                class="w-full h-full"
-              />
+              <!-- Player (SDK Twitch) -->
+              <div
+                :class="[
+                  focusedChannel === channel
+                    ? 'flex-1 min-h-0'
+                    : 'h-full ' + (showChat[channel] ? 'flex-7' : 'w-full')
+                ]"
+              >
+                <div
+                  :id="`player-${channel}`"
+                  class="w-full h-full min-h-[200px] [&>iframe]:w-full [&>iframe]:h-full"
+                />
+              </div>
+
+              <!-- Chat -->
+              <div
+                v-if="showChat[channel]"
+                :class="[
+                  focusedChannel === channel
+                    ? 'h-64 lg:h-auto lg:w-96 shrink-0'
+                    : 'flex-3 h-full min-w-[250px] max-w-[350px]'
+                ]"
+              >
+                <iframe
+                  :src="`https://www.twitch.tv/embed/${channel}/chat?parent=${parentDomain}&darkpopout`"
+                  class="w-full h-full"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -845,3 +973,95 @@ function handleQualityChange(channel: string, quality: string) {
     />
   </UContainer>
 </template>
+
+<style scoped>
+/* Card de stream */
+.stream-card {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s ease,
+              box-shadow 0.3s ease;
+}
+
+.card-inner {
+  position: relative;
+}
+
+/* Drag handle styling */
+.drag-handle {
+  cursor: grab;
+  touch-action: none;
+  transition: transform 0.2s ease;
+}
+
+.drag-handle:hover {
+  transform: scale(1.2);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  transform: scale(0.9);
+}
+
+/* Élément en cours de drag */
+.dragging {
+  opacity: 0.6;
+  transform: scale(0.95) rotate(2deg);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+}
+
+/* Indicateur de drop */
+.drop-indicator {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 5px;
+  background: #3b82f6;
+  border-radius: 3px;
+  z-index: 9999;
+  pointer-events: none;
+  animation: pulse-glow 0.6s ease-in-out infinite;
+  box-shadow: 0 0 10px 3px #3b82f6,
+              0 0 20px 6px rgba(59, 130, 246, 0.4);
+}
+
+.drop-indicator-left {
+  left: 0;
+}
+
+.drop-indicator-right {
+  right: 0;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 10px 3px #3b82f6,
+                0 0 20px 6px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    opacity: 0.85;
+    box-shadow: 0 0 15px 5px #3b82f6,
+                0 0 30px 10px rgba(59, 130, 246, 0.5);
+  }
+}
+
+/* Animation de "settle" après le drop */
+@keyframes settle {
+  0% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 4px rgb(var(--color-primary-500) / 0.5);
+  }
+  50% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+.just-swapped {
+  animation: settle 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+</style>
