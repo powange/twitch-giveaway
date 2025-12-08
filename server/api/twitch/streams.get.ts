@@ -29,6 +29,10 @@ interface TwitchStreamsResponse {
 // Cache du token pour éviter de le redemander à chaque requête
 let cachedToken: { token: string, expiresAt: number } | null = null
 
+// Cache des résultats de streams (30 secondes)
+const STREAMS_CACHE_TTL = 30 * 1000
+let cachedStreams: { data: unknown[], cachedAt: number } | null = null
+
 async function getAppAccessToken(clientId: string, clientSecret: string): Promise<string> {
   // Vérifier si on a un token en cache encore valide (avec 5 min de marge)
   if (cachedToken && Date.now() < cachedToken.expiresAt - 300000) {
@@ -111,6 +115,11 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Vérifier le cache
+  if (cachedStreams && Date.now() - cachedStreams.cachedAt < STREAMS_CACHE_TTL) {
+    return cachedStreams.data
+  }
+
   try {
     // Obtenir le token
     const accessToken = await getAppAccessToken(
@@ -131,7 +140,7 @@ export default defineEventHandler(async (event) => {
     )
 
     // Formater la réponse
-    return giveawayStreams.map(stream => ({
+    const result = giveawayStreams.map(stream => ({
       url: `https://twitch.tv/${stream.user_login}`,
       title: stream.title,
       viewerCount: stream.viewer_count,
@@ -139,6 +148,11 @@ export default defineEventHandler(async (event) => {
       startedAt: stream.started_at,
       thumbnail: stream.thumbnail_url.replace('{width}', '320').replace('{height}', '180')
     }))
+
+    // Mettre en cache
+    cachedStreams = { data: result, cachedAt: Date.now() }
+
+    return result
   } catch (error) {
     console.error('Twitch API error:', error)
     throw createError({
