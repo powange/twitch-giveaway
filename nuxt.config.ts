@@ -9,6 +9,12 @@ export default defineNuxtConfig({
     enabled: true
   },
 
+  runtimeConfig: {
+    // Variables privées (côté serveur uniquement)
+    twitchClientId: process.env.TWITCH_CLIENT_ID,
+    twitchClientSecret: process.env.TWITCH_CLIENT_SECRET
+  },
+
   css: ['~/assets/css/main.css'],
 
   routeRules: {

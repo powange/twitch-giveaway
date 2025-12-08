@@ -19,7 +19,28 @@ interface Giveaway {
   createdAt: string
 }
 
+// Utilitaire pour extraire le nom du streamer
+function getStreamerName(channel: string) {
+  const match = channel.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([^/?]+)/i)
+  return match ? match[1] : channel
+}
+
 const toast = useToast()
+
+// Callback du scanner Twitch
+function onScannerCreate(stream: { url: string }) {
+  editingGiveaway.value = {
+    id: '',
+    twitchChannel: stream.url,
+    date: new Date().toISOString().split('T')[0],
+    giftIds: [],
+    type: 'command',
+    requireFollow: false,
+    closed: false,
+    createdAt: ''
+  }
+  isModalOpen.value = true
+}
 
 // SSE pour les mises à jour en temps réel
 const { giveaways: sseGiveaways, gifts: sseGifts, isInitialized } = useSSE()
@@ -267,12 +288,6 @@ function formatDate(dateString: string) {
   })
 }
 
-function getStreamerName(channel: string) {
-  // Extraire le nom du streamer si c'est une URL
-  const match = channel.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([^/?]+)/i)
-  return match ? match[1] : channel
-}
-
 function getTwitchUrl(channel: string) {
   const name = getStreamerName(channel)
   return `https://twitch.tv/${name}`
@@ -301,12 +316,19 @@ function getTwitchUrl(channel: string) {
           Sea of Thieves sur Twitch
         </a>
       </div>
-      <UButton
-        icon="i-lucide-plus"
-        label="Ajouter un giveaway"
-        :disabled="!gifts?.length"
-        @click="openNewGiveaway"
-      />
+      <div class="flex gap-2">
+        <TwitchScanner
+          :giveaways="giveaways"
+          :gifts="gifts"
+          @create="onScannerCreate"
+        />
+        <UButton
+          icon="i-lucide-plus"
+          label="Ajouter un giveaway"
+          :disabled="!gifts?.length"
+          @click="openNewGiveaway"
+        />
+      </div>
     </div>
 
     <UAlert
