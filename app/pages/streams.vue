@@ -468,17 +468,12 @@ function handleQualityChange(channel: string, quality: string) {
       class="flex flex-wrap justify-between items-center gap-2 mb-4"
     >
       <!-- Densité de la grille -->
-      <div class="flex items-center gap-1">
-        <UIcon
-          name="i-lucide-layout-grid"
-          class="w-4 h-4 text-muted mr-1"
-        />
+      <UButtonGroup size="xs">
         <UButton
           icon="i-lucide-rectangle-horizontal"
           title="Confortable (max 2)"
           :color="gridDensity === 'comfortable' ? 'primary' : 'neutral'"
           :variant="gridDensity === 'comfortable' ? 'solid' : 'outline'"
-          size="xs"
           @click="gridDensity = 'comfortable'"
         />
         <UButton
@@ -486,7 +481,6 @@ function handleQualityChange(channel: string, quality: string) {
           title="Normal (max 3)"
           :color="gridDensity === 'normal' ? 'primary' : 'neutral'"
           :variant="gridDensity === 'normal' ? 'solid' : 'outline'"
-          size="xs"
           @click="gridDensity = 'normal'"
         />
         <UButton
@@ -494,10 +488,9 @@ function handleQualityChange(channel: string, quality: string) {
           title="Compact (max 5)"
           :color="gridDensity === 'compact' ? 'primary' : 'neutral'"
           :variant="gridDensity === 'compact' ? 'solid' : 'outline'"
-          size="xs"
           @click="gridDensity = 'compact'"
         />
-      </div>
+      </UButtonGroup>
 
       <!-- Controles lecture/son/qualité -->
       <div class="flex gap-2">
