@@ -468,7 +468,7 @@ function handleQualityChange(channel: string, quality: string) {
       class="flex flex-wrap justify-between items-center gap-2 mb-4"
     >
       <!-- Densité de la grille -->
-      <UButtonGroup size="xs">
+      <UFieldGroup size="xs">
         <UButton
           icon="i-lucide-rectangle-horizontal"
           title="Confortable (max 2)"
@@ -490,7 +490,7 @@ function handleQualityChange(channel: string, quality: string) {
           :variant="gridDensity === 'compact' ? 'solid' : 'outline'"
           @click="gridDensity = 'compact'"
         />
-      </UButtonGroup>
+      </UFieldGroup>
 
       <!-- Controles lecture/son/qualité -->
       <div class="flex gap-2">
