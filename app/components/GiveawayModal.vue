@@ -76,12 +76,22 @@ function loadGiveaway(giveaway: Giveaway) {
   form.requireFollow = giveaway.requireFollow
 }
 
+// Mode édition si giveaway avec ID, sinon création
+const isEditing = computed(() => Boolean(props.giveaway?.id))
+
 // Charger le giveaway quand la modal s'ouvre
 watch(isOpen, (open) => {
   if (open) {
-    if (props.giveaway) {
+    if (props.giveaway?.id) {
+      // Mode édition : charger toutes les données
       loadGiveaway(props.giveaway)
+    } else if (props.giveaway) {
+      // Mode création avec pré-remplissage (depuis scanner)
+      resetForm()
+      form.twitchChannel = props.giveaway.twitchChannel
+      form.date = props.giveaway.date || getTodayDate()
     } else {
+      // Mode création vierge
       resetForm()
     }
   }
@@ -108,13 +118,13 @@ async function saveGiveaway() {
 
   isLoading.value = true
   try {
-    if (props.giveaway) {
+    if (isEditing.value) {
       // Mode édition
-      await $fetch(`/api/giveaways/${props.giveaway.id}`, {
+      await $fetch(`/api/giveaways/${props.giveaway!.id}`, {
         method: 'PUT',
         body: {
           ...form,
-          closed: props.giveaway.closed,
+          closed: props.giveaway!.closed,
           drawTime: form.drawTime || undefined
         }
       })
@@ -143,7 +153,7 @@ async function saveGiveaway() {
   } catch {
     toast.add({
       title: 'Erreur',
-      description: props.giveaway ? 'Impossible de modifier le giveaway' : 'Impossible d\'ajouter le giveaway',
+      description: isEditing.value ? 'Impossible de modifier le giveaway' : 'Impossible d\'ajouter le giveaway',
       color: 'error'
     })
   } finally {
@@ -165,7 +175,7 @@ function close() {
       <UCard>
         <template #header>
           <h2 class="text-xl font-semibold">
-            {{ giveaway ? 'Modifier le Giveaway' : 'Nouveau Giveaway' }}
+            {{ isEditing ? 'Modifier le Giveaway' : 'Nouveau Giveaway' }}
           </h2>
         </template>
 
@@ -273,7 +283,7 @@ function close() {
             />
             <UButton
               type="submit"
-              :label="giveaway ? 'Modifier' : 'Ajouter'"
+              :label="isEditing ? 'Modifier' : 'Ajouter'"
               :loading="isLoading"
             />
           </div>
