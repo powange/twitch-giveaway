@@ -164,6 +164,36 @@ async function saveGiveaway() {
 function close() {
   isOpen.value = false
 }
+
+async function toggleClosed() {
+  if (!props.giveaway?.id) return
+
+  isLoading.value = true
+  try {
+    await $fetch(`/api/giveaways/${props.giveaway.id}`, {
+      method: 'PUT',
+      body: {
+        ...props.giveaway,
+        closed: !props.giveaway.closed
+      }
+    })
+    toast.add({
+      title: 'Succes',
+      description: props.giveaway.closed ? 'Giveaway rouvert' : 'Giveaway clos',
+      color: 'success'
+    })
+    isOpen.value = false
+    emit('saved')
+  } catch {
+    toast.add({
+      title: 'Erreur',
+      description: 'Impossible de modifier le statut',
+      color: 'error'
+    })
+  } finally {
+    isLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -274,18 +304,31 @@ function close() {
             />
           </UFormField>
 
-          <div class="flex justify-end gap-2 pt-4">
-            <UButton
-              label="Annuler"
-              color="neutral"
-              variant="outline"
-              @click="close"
-            />
-            <UButton
-              type="submit"
-              :label="isEditing ? 'Modifier' : 'Ajouter'"
-              :loading="isLoading"
-            />
+          <div class="flex justify-between pt-4">
+            <div>
+              <UButton
+                v-if="isEditing"
+                :icon="giveaway?.closed ? 'i-lucide-play' : 'i-lucide-check'"
+                :label="giveaway?.closed ? 'Rouvrir' : 'Clore'"
+                :color="giveaway?.closed ? 'success' : 'warning'"
+                variant="soft"
+                :loading="isLoading"
+                @click="toggleClosed"
+              />
+            </div>
+            <div class="flex gap-2">
+              <UButton
+                label="Annuler"
+                color="neutral"
+                variant="outline"
+                @click="close"
+              />
+              <UButton
+                type="submit"
+                :label="isEditing ? 'Modifier' : 'Ajouter'"
+                :loading="isLoading"
+              />
+            </div>
           </div>
         </form>
       </UCard>
