@@ -9,6 +9,11 @@ const autoAlertPercentage = ref(0)
 const lastAlertTime = ref<Map<string, number>>(new Map())
 const alertCooldown = ref(30) // secondes
 
+// Valeurs par défaut
+const DEFAULT_COMMAND_THRESHOLD = 0.25
+const DEFAULT_ALERT_THRESHOLD = 0.35
+const DEFAULT_ALERT_COOLDOWN = 30
+
 const {
   joinChannel,
   leaveChannel,
@@ -609,6 +614,13 @@ function getQualityOptions(channel: string) {
 function handleQualityChange(channel: string, quality: string) {
   setQuality(channel, quality)
 }
+
+// Remettre les paramètres de détection par défaut
+function resetDetectionSettings() {
+  setCommandThreshold(DEFAULT_COMMAND_THRESHOLD)
+  setAlertThreshold(DEFAULT_ALERT_THRESHOLD)
+  alertCooldown.value = DEFAULT_ALERT_COOLDOWN
+}
 </script>
 
 <template>
@@ -786,6 +798,15 @@ function handleQualityChange(channel: string, quality: string) {
                   Delai minimum entre 2 alertes sur un meme stream
                 </p>
               </div>
+              <UButton
+                icon="i-lucide-rotate-ccw"
+                label="Valeurs par defaut"
+                color="neutral"
+                variant="soft"
+                size="xs"
+                block
+                @click="resetDetectionSettings"
+              />
             </div>
           </template>
         </UPopover>
