@@ -16,6 +16,7 @@ const BUFFER_SIZE = 20
 interface ChatCallbacks {
   onMessage?: (channel: string, user: string, message: string) => void
   onGiveawayDetected?: (channel: string, command: string, percentage: number) => void
+  onStreamElementsUrlDetected?: (channel: string, url: string) => void
 }
 
 interface ChatOptions {
@@ -132,6 +133,14 @@ export function useTwitchChat(callbacks?: ChatCallbacks, options?: ChatOptions) 
 
     // Analyser le buffer
     analyzeBuffer(channel)
+
+    // Détecter les URLs StreamElements (messages du bot StreamElements)
+    if (user.toLowerCase() === 'streamelements') {
+      const seUrlMatch = message.match(/https:\/\/streamelements\.com\/[^/]+\/giveaway\/[a-f0-9]+/i)
+      if (seUrlMatch) {
+        callbacks?.onStreamElementsUrlDetected?.(channel, seUrlMatch[0])
+      }
+    }
 
     // Callback optionnel
     callbacks?.onMessage?.(channel, user, message)

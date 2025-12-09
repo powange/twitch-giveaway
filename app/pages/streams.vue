@@ -9,6 +9,12 @@ const autoAlertPercentage = ref(0)
 const lastAlertTime = ref<Map<string, number>>(new Map())
 const alertCooldown = ref(30) // secondes
 
+// StreamElements URL detection
+const seUrlModalOpen = ref(false)
+const seUrlChannel = ref<string | null>(null)
+const seUrlDetected = ref('')
+const seUrlUpdating = ref(false)
+
 // Valeurs par défaut
 const DEFAULT_COMMAND_THRESHOLD = 0.25
 const DEFAULT_ALERT_THRESHOLD = 0.35
@@ -44,6 +50,19 @@ const {
     autoAlertModalOpen.value = true
     // Jouer le son d'alerte
     playAlertSound()
+  },
+  onStreamElementsUrlDetected: (channel, url) => {
+    // Trouver le giveaway associé au channel
+    const channelGiveaways = getChannelGiveaways(channel)
+    const giveaway = channelGiveaways[0]
+
+    // Vérifier si l'URL est différente
+    if (giveaway && giveaway.streamElementsUrl !== url) {
+      seUrlChannel.value = channel
+      seUrlDetected.value = url
+      seUrlModalOpen.value = true
+      playAlertSound()
+    }
   }
 })
 
@@ -80,6 +99,39 @@ async function confirmAutoAlert() {
 
   // Fermer la modal
   autoAlertModalOpen.value = false
+}
+
+// Confirmer la mise à jour de l'URL StreamElements
+async function confirmSeUrlUpdate() {
+  if (!seUrlChannel.value) return
+
+  const channelGiveaways = getChannelGiveaways(seUrlChannel.value)
+  const giveaway = channelGiveaways[0]
+
+  if (giveaway) {
+    seUrlUpdating.value = true
+    try {
+      await $fetch(`/api/giveaways/${giveaway.id}/streamelements-url`, {
+        method: 'PATCH',
+        body: { streamElementsUrl: seUrlDetected.value }
+      })
+      toast.add({
+        title: 'URL mise a jour',
+        description: 'Le lien StreamElements a ete enregistre',
+        color: 'success'
+      })
+    } catch {
+      toast.add({
+        title: 'Erreur',
+        description: 'Impossible de mettre a jour l\'URL',
+        color: 'error'
+      })
+    } finally {
+      seUrlUpdating.value = false
+    }
+  }
+
+  seUrlModalOpen.value = false
 }
 
 // SSE pour les mises à jour en temps réel
@@ -1226,6 +1278,65 @@ function resetDetectionSettings() {
               color="warning"
               icon="i-lucide-check"
               @click="confirmAutoAlert"
+            />
+          </div>
+        </UCard>
+      </template>
+    </UModal>
+
+    <!-- Modal URL StreamElements détectée -->
+    <UModal v-model:open="seUrlModalOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <UIcon
+                name="i-lucide-link"
+                class="w-6 h-6 text-info"
+              />
+              <h2 class="text-xl font-semibold">
+                Lien StreamElements detecte
+              </h2>
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <p>
+              Un lien de giveaway StreamElements a ete detecte sur
+              <strong class="text-primary">{{ seUrlChannel }}</strong>
+            </p>
+
+            <div class="p-3 rounded-lg bg-info-50 dark:bg-info-950/20 border border-info-200 dark:border-info-800">
+              <p class="text-xs text-muted mb-1">
+                URL detectee
+              </p>
+              <a
+                :href="seUrlDetected"
+                target="_blank"
+                class="text-sm text-info hover:underline break-all"
+              >
+                {{ seUrlDetected }}
+              </a>
+            </div>
+
+            <p class="text-sm text-muted">
+              Voulez-vous mettre a jour le giveaway avec ce lien ?
+            </p>
+          </div>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <UButton
+              label="Ignorer"
+              color="neutral"
+              variant="outline"
+              @click="seUrlModalOpen = false"
+            />
+            <UButton
+              label="Mettre a jour"
+              color="info"
+              icon="i-lucide-check"
+              :loading="seUrlUpdating"
+              @click="confirmSeUrlUpdate"
             />
           </div>
         </UCard>
