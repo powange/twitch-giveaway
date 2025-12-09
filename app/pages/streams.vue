@@ -7,7 +7,16 @@ const autoAlertChannel = ref<string | null>(null)
 const autoAlertCommand = ref('')
 const autoAlertPercentage = ref(0)
 
-const { joinChannel, leaveChannel, getDetectedCommand, resetAlert } = useTwitchChat({
+const {
+  joinChannel,
+  leaveChannel,
+  getDetectedCommand,
+  resetAlert,
+  commandThreshold,
+  alertThreshold,
+  setCommandThreshold,
+  setAlertThreshold
+} = useTwitchChat({
   onGiveawayDetected: (channel, command, percentage) => {
     // Focus le stream
     focusedChannel.value = channel
@@ -343,6 +352,13 @@ onMounted(() => {
       if (parsed.channelOrder) {
         channelOrder.value = parsed.channelOrder
       }
+      // Charger les seuils de détection
+      if (typeof parsed.commandThreshold === 'number') {
+        setCommandThreshold(parsed.commandThreshold)
+      }
+      if (typeof parsed.alertThreshold === 'number') {
+        setAlertThreshold(parsed.alertThreshold)
+      }
     } catch { /* ignore */ }
   }
 
@@ -370,12 +386,14 @@ onBeforeRouteLeave(() => {
 })
 
 // Sauvegarder dans localStorage à chaque modification
-watch([selectedChannels, showChat, gridDensity, channelOrder], () => {
+watch([selectedChannels, showChat, gridDensity, channelOrder, commandThreshold, alertThreshold], () => {
   localStorage.setItem('selectedStreams', JSON.stringify({
     channels: selectedChannels.value,
     showChat: showChat.value,
     gridDensity: gridDensity.value,
-    channelOrder: channelOrder.value
+    channelOrder: channelOrder.value,
+    commandThreshold: commandThreshold.value,
+    alertThreshold: alertThreshold.value
   }))
 }, { deep: true })
 
@@ -690,6 +708,53 @@ function handleQualityChange(channel: string, quality: string) {
           size="sm"
           @click="toggleQualityAll"
         />
+
+        <!-- Seuils de détection giveaway -->
+        <UPopover>
+          <UButton
+            icon="i-lucide-sliders-horizontal"
+            label="Detection"
+            color="neutral"
+            variant="outline"
+            size="sm"
+          />
+          <template #content>
+            <div class="p-4 space-y-4 w-64">
+              <div>
+                <label class="text-sm font-medium mb-2 block">
+                  Seuil badge: {{ Math.round(commandThreshold * 100) }}%
+                </label>
+                <input
+                  type="range"
+                  min="5"
+                  max="50"
+                  :value="commandThreshold * 100"
+                  class="w-full"
+                  @input="setCommandThreshold(Number(($event.target as HTMLInputElement).value) / 100)"
+                >
+                <p class="text-xs text-muted mt-1">
+                  Affiche le badge quand X% du chat utilise une commande
+                </p>
+              </div>
+              <div>
+                <label class="text-sm font-medium mb-2 block">
+                  Seuil alerte: {{ Math.round(alertThreshold * 100) }}%
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="80"
+                  :value="alertThreshold * 100"
+                  class="w-full"
+                  @input="setAlertThreshold(Number(($event.target as HTMLInputElement).value) / 100)"
+                >
+                <p class="text-xs text-muted mt-1">
+                  Declenche l'alerte sonore quand X% du chat utilise une commande
+                </p>
+              </div>
+            </div>
+          </template>
+        </UPopover>
       </div>
     </div>
 

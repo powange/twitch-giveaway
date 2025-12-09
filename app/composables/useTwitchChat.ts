@@ -12,15 +12,20 @@ interface DetectedCommand {
 }
 
 const BUFFER_SIZE = 20
-const COMMAND_THRESHOLD = 0.25 // 25% des messages doivent contenir la commande
-const ALERT_THRESHOLD = 0.35 // 35% pour déclencher une alerte
 
 interface ChatCallbacks {
   onMessage?: (channel: string, user: string, message: string) => void
   onGiveawayDetected?: (channel: string, command: string, percentage: number) => void
 }
 
-export function useTwitchChat(callbacks?: ChatCallbacks) {
+interface ChatOptions {
+  commandThreshold?: number // Seuil pour afficher le badge (défaut: 25%)
+  alertThreshold?: number   // Seuil pour déclencher l'alerte (défaut: 35%)
+}
+
+export function useTwitchChat(callbacks?: ChatCallbacks, options?: ChatOptions) {
+  const commandThreshold = ref(options?.commandThreshold ?? 0.25)
+  const alertThreshold = ref(options?.alertThreshold ?? 0.35)
   const ws = ref<WebSocket | null>(null)
   const isConnected = ref(false)
   const connectedChannels = ref<Set<string>>(new Set())
@@ -82,7 +87,7 @@ export function useTwitchChat(callbacks?: ChatCallbacks) {
     const percentage = Math.round((topCount / buffer.length) * 100)
 
     // Vérifier si elle dépasse le seuil d'affichage
-    if (topCommand && topCount >= buffer.length * COMMAND_THRESHOLD) {
+    if (topCommand && topCount >= buffer.length * commandThreshold.value) {
       detectedCommands.value.set(channel, {
         command: topCommand,
         count: topCount,
@@ -90,7 +95,7 @@ export function useTwitchChat(callbacks?: ChatCallbacks) {
       })
 
       // Vérifier si on doit déclencher une alerte (seuil plus élevé)
-      if (topCount >= buffer.length * ALERT_THRESHOLD && !alertedChannels.value.has(channel)) {
+      if (topCount >= buffer.length * alertThreshold.value && !alertedChannels.value.has(channel)) {
         alertedChannels.value.add(channel)
         console.log('[TwitchChat] Giveaway detected!', channel, topCommand, percentage + '%')
         callbacks?.onGiveawayDetected?.(channel, topCommand, percentage)
@@ -250,13 +255,26 @@ export function useTwitchChat(callbacks?: ChatCallbacks) {
     ws.value = null
   })
 
+  // Mettre à jour les seuils
+  function setCommandThreshold(value: number) {
+    commandThreshold.value = Math.max(0.05, Math.min(1, value))
+  }
+
+  function setAlertThreshold(value: number) {
+    alertThreshold.value = Math.max(0.05, Math.min(1, value))
+  }
+
   return {
     isConnected,
     connectedChannels,
     detectedCommands,
+    commandThreshold: readonly(commandThreshold),
+    alertThreshold: readonly(alertThreshold),
     joinChannel,
     leaveChannel,
     getDetectedCommand,
-    resetAlert
+    resetAlert,
+    setCommandThreshold,
+    setAlertThreshold
   }
 }
