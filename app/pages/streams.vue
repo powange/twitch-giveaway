@@ -813,9 +813,11 @@ function handleQualityChange(channel: string, quality: string) {
               'card-inner rounded-lg border-2 bg-white dark:bg-gray-900 overflow-hidden transition-all',
               alertedChannel === channel
                 ? 'border-orange-500 ring-4 ring-orange-500/50 animate-pulse'
-                : hasClosedGiveaway(channel)
-                  ? 'border-red-500'
-                  : 'border-gray-200 dark:border-gray-800',
+                : getDetectedCommand(channel)
+                  ? 'border-red-500 ring-2 ring-red-500/30 animate-pulse'
+                  : hasClosedGiveaway(channel)
+                    ? 'border-red-500'
+                    : 'border-gray-200 dark:border-gray-800',
               focusedChannel === channel ? 'h-full flex flex-col' : ''
             ]"
           >
@@ -879,7 +881,7 @@ function handleQualityChange(channel: string, quality: string) {
                 <!-- Commande détectée dans le chat -->
                 <UBadge
                   v-if="getDetectedCommand(channel)"
-                  color="success"
+                  color="error"
                   size="xs"
                   variant="soft"
                   class="animate-pulse"
