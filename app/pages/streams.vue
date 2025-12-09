@@ -817,7 +817,7 @@ function handleQualityChange(channel: string, quality: string) {
               alertedChannel === channel
                 ? 'border-orange-500 ring-4 ring-orange-500/50 animate-pulse'
                 : getDetectedCommand(channel)
-                  ? 'border-red-500 ring-2 ring-red-500/30 animate-pulse'
+                  ? 'border-pulse-red'
                   : hasClosedGiveaway(channel)
                     ? 'border-red-500'
                     : 'border-gray-200 dark:border-gray-800',
@@ -1274,5 +1274,21 @@ function handleQualityChange(channel: string, quality: string) {
 
 .just-swapped {
   animation: settle 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Animation de bordure rouge pour détection de giveaway */
+@keyframes border-pulse-red {
+  0%, 100% {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    border-color: #fca5a5;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.5);
+  }
+}
+
+.border-pulse-red {
+  animation: border-pulse-red 1s ease-in-out infinite;
 }
 </style>
