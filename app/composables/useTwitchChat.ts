@@ -61,6 +61,9 @@ export function useTwitchChat(callbacks?: ChatCallbacks, options?: ChatOptions) 
       return
     }
 
+    // Commandes à ignorer (StreamElements, bots, etc.)
+    const ignoredCommands = ['!ticket']
+
     // Compter les messages qui commencent par ! (commandes)
     const commandCounts = new Map<string, number>()
 
@@ -69,6 +72,8 @@ export function useTwitchChat(callbacks?: ChatCallbacks, options?: ChatOptions) 
       const match = msg.message.match(/^(!\w+)/)
       if (match && match[1]) {
         const cmd = match[1].toLowerCase()
+        // Ignorer certaines commandes
+        if (ignoredCommands.includes(cmd)) continue
         commandCounts.set(cmd, (commandCounts.get(cmd) || 0) + 1)
       }
     }
