@@ -29,10 +29,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (giveaway.type !== 'command') {
+  if (giveaway.type !== 'command' && giveaway.type !== 'ticket') {
     throw createError({
       statusCode: 400,
-      message: 'Ce giveaway n\'est pas de type commande',
+      message: 'Ce giveaway n\'est pas de type commande ou ticket',
     })
   }
 

@@ -1,6 +1,61 @@
 <script setup lang="ts">
 const toast = useToast()
 
+// Chat IRC Twitch pour détecter les commandes
+const autoAlertModalOpen = ref(false)
+const autoAlertChannel = ref<string | null>(null)
+const autoAlertCommand = ref('')
+const autoAlertPercentage = ref(0)
+
+const { joinChannel, leaveChannel, getDetectedCommand, resetAlert } = useTwitchChat({
+  onGiveawayDetected: (channel, command, percentage) => {
+    // Focus le stream
+    focusedChannel.value = channel
+    // Ouvrir la modal d'alerte automatique
+    autoAlertChannel.value = channel
+    autoAlertCommand.value = command
+    autoAlertPercentage.value = percentage
+    autoAlertModalOpen.value = true
+    // Jouer le son d'alerte
+    playAlertSound()
+  }
+})
+
+// Confirmer l'alerte automatique : mettre à jour le giveaway et copier la commande
+async function confirmAutoAlert() {
+  if (!autoAlertChannel.value) return
+
+  // Trouver le giveaway associé au channel
+  const channelGiveaways = getChannelGiveaways(autoAlertChannel.value)
+  const giveaway = channelGiveaways.find(g => g.type === 'command' || g.type === 'ticket')
+
+  if (giveaway && autoAlertCommand.value) {
+    try {
+      await $fetch(`/api/giveaways/${giveaway.id}/command`, {
+        method: 'PATCH',
+        body: { command: autoAlertCommand.value }
+      })
+      toast.add({
+        title: 'Commande mise a jour',
+        description: `La commande ${autoAlertCommand.value} a ete enregistree`,
+        color: 'success'
+      })
+    } catch {
+      toast.add({
+        title: 'Erreur',
+        description: 'Impossible de mettre a jour la commande',
+        color: 'error'
+      })
+    }
+  }
+
+  // Copier la commande
+  await copyCommand(autoAlertCommand.value)
+
+  // Fermer la modal
+  autoAlertModalOpen.value = false
+}
+
 // SSE pour les mises à jour en temps réel
 const { giveaways: sseGiveaways, gifts: sseGifts, drawAlert, clearAlert, isInitialized } = useSSE()
 
@@ -51,9 +106,10 @@ function playAlertSound() {
     }
 
     const now = audioContext.currentTime
-    playBeep(now)
-    playBeep(now + 0.2)
-    playBeep(now + 0.4)
+    // 8 bips espacés de 0.2 secondes
+    for (let i = 0; i < 8; i++) {
+      playBeep(now + i * 0.2)
+    }
   } catch {
     // Ignorer les erreurs si l'audio ne peut pas être joué
   }
@@ -329,6 +385,7 @@ watch(selectedChannels, async (newChannels, oldChannels) => {
   const removedChannels = (oldChannels || []).filter(c => !newChannels.includes(c))
   for (const channel of removedChannels) {
     destroyPlayer(channel)
+    leaveChannel(channel) // Quitter le chat IRC
   }
 
   // Créer les nouveaux players
@@ -338,6 +395,7 @@ watch(selectedChannels, async (newChannels, oldChannels) => {
 
     for (const channel of addedChannels) {
       await createPlayer(`player-${channel}`, channel)
+      joinChannel(channel) // Rejoindre le chat IRC
     }
   }
 }, { immediate: true, deep: true })
@@ -750,6 +808,21 @@ function handleQualityChange(channel: string, quality: string) {
                   {{ getChannelGiveawayType(channel) === 'command' ? 'Commande' : getChannelGiveawayType(channel) === 'ticket' ? 'Ticket' : 'StreamElements' }}
                 </UBadge>
 
+                <!-- Commande détectée dans le chat -->
+                <UBadge
+                  v-if="getDetectedCommand(channel)"
+                  color="success"
+                  size="xs"
+                  variant="soft"
+                  class="animate-pulse"
+                >
+                  <UIcon
+                    name="i-lucide-message-circle"
+                    class="w-3 h-3 mr-1"
+                  />
+                  {{ getDetectedCommand(channel)?.command }} ({{ getDetectedCommand(channel)?.percentage }}%)
+                </UBadge>
+
                 <!-- Commande -->
                 <div
                   v-if="getChannelCommand(channel)"
@@ -971,6 +1044,71 @@ function handleQualityChange(channel: string, quality: string) {
       :giveaway="editingGiveaway"
       :gifts="gifts"
     />
+
+    <!-- Modal alerte automatique (giveaway détecté dans le chat) -->
+    <UModal v-model:open="autoAlertModalOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <UIcon
+                name="i-lucide-sparkles"
+                class="w-6 h-6 text-warning animate-pulse"
+              />
+              <h2 class="text-xl font-semibold">
+                Giveaway detecte !
+              </h2>
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <p>
+              Une activite de giveaway a ete detectee sur
+              <strong class="text-primary">{{ autoAlertChannel }}</strong>
+            </p>
+
+            <div class="flex items-center gap-3 p-4 rounded-lg bg-warning-50 dark:bg-warning-950/20 border border-warning-200 dark:border-warning-800">
+              <UIcon
+                name="i-lucide-terminal"
+                class="w-8 h-8 text-warning"
+              />
+              <div>
+                <div class="text-sm text-muted">
+                  Commande detectee
+                </div>
+                <code class="text-xl font-bold">{{ autoAlertCommand }}</code>
+              </div>
+              <UBadge
+                color="warning"
+                size="lg"
+                class="ml-auto"
+              >
+                {{ autoAlertPercentage }}% du chat
+              </UBadge>
+            </div>
+
+            <p class="text-sm text-muted">
+              Cette commande apparait dans {{ autoAlertPercentage }}% des 20 derniers messages du chat.
+            </p>
+          </div>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <UButton
+              label="Ignorer"
+              color="neutral"
+              variant="outline"
+              @click="autoAlertModalOpen = false; resetAlert(autoAlertChannel!)"
+            />
+            <UButton
+              label="Confirmer et copier"
+              color="warning"
+              icon="i-lucide-check"
+              @click="confirmAutoAlert"
+            />
+          </div>
+        </UCard>
+      </template>
+    </UModal>
   </UContainer>
 </template>
 
