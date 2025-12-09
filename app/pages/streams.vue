@@ -6,6 +6,9 @@ const autoAlertModalOpen = ref(false)
 const autoAlertChannel = ref<string | null>(null)
 const autoAlertCommand = ref('')
 const autoAlertPercentage = ref(0)
+const lastAlertTime = ref<Map<string, number>>(new Map())
+
+const ALERT_COOLDOWN = 30000 // 30 secondes
 
 const {
   joinChannel,
@@ -20,6 +23,13 @@ const {
   onGiveawayDetected: (channel, command, percentage) => {
     // Ne pas alerter si le stream est déjà en focus
     if (focusedChannel.value === channel) return
+
+    // Ne pas alerter si une alerte a été déclenchée récemment pour ce channel
+    const lastAlert = lastAlertTime.value.get(channel)
+    if (lastAlert && Date.now() - lastAlert < ALERT_COOLDOWN) return
+
+    // Enregistrer le timestamp de l'alerte
+    lastAlertTime.value.set(channel, Date.now())
 
     // Focus le stream
     focusedChannel.value = channel
