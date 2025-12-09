@@ -7,8 +7,7 @@ const autoAlertChannel = ref<string | null>(null)
 const autoAlertCommand = ref('')
 const autoAlertPercentage = ref(0)
 const lastAlertTime = ref<Map<string, number>>(new Map())
-
-const ALERT_COOLDOWN = 30000 // 30 secondes
+const alertCooldown = ref(30) // secondes
 
 const {
   joinChannel,
@@ -26,7 +25,7 @@ const {
 
     // Ne pas alerter si une alerte a été déclenchée récemment pour ce channel
     const lastAlert = lastAlertTime.value.get(channel)
-    if (lastAlert && Date.now() - lastAlert < ALERT_COOLDOWN) return
+    if (lastAlert && Date.now() - lastAlert < alertCooldown.value * 1000) return
 
     // Enregistrer le timestamp de l'alerte
     lastAlertTime.value.set(channel, Date.now())
@@ -372,6 +371,9 @@ onMounted(() => {
       if (typeof parsed.alertThreshold === 'number') {
         setAlertThreshold(parsed.alertThreshold)
       }
+      if (typeof parsed.alertCooldown === 'number') {
+        alertCooldown.value = parsed.alertCooldown
+      }
     } catch { /* ignore */ }
   }
 
@@ -399,14 +401,15 @@ onBeforeRouteLeave(() => {
 })
 
 // Sauvegarder dans localStorage à chaque modification
-watch([selectedChannels, showChat, gridDensity, channelOrder, commandThreshold, alertThreshold], () => {
+watch([selectedChannels, showChat, gridDensity, channelOrder, commandThreshold, alertThreshold, alertCooldown], () => {
   localStorage.setItem('selectedStreams', JSON.stringify({
     channels: selectedChannels.value,
     showChat: showChat.value,
     gridDensity: gridDensity.value,
     channelOrder: channelOrder.value,
     commandThreshold: commandThreshold.value,
-    alertThreshold: alertThreshold.value
+    alertThreshold: alertThreshold.value,
+    alertCooldown: alertCooldown.value
   }))
 }, { deep: true })
 
@@ -766,6 +769,21 @@ function handleQualityChange(channel: string, quality: string) {
                 >
                 <p class="text-xs text-muted mt-1">
                   Declenche l'alerte sonore quand X% du chat utilise une commande
+                </p>
+              </div>
+              <div>
+                <label class="text-sm font-medium mb-2 block">
+                  Cooldown: {{ alertCooldown }}s
+                </label>
+                <input
+                  v-model.number="alertCooldown"
+                  type="range"
+                  min="10"
+                  max="120"
+                  class="w-full"
+                >
+                <p class="text-xs text-muted mt-1">
+                  Delai minimum entre 2 alertes sur un meme stream
                 </p>
               </div>
             </div>
