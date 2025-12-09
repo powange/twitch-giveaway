@@ -720,9 +720,12 @@ function handleQualityChange(channel: string, quality: string) {
           />
           <template #content>
             <div class="p-4 space-y-4 w-64">
+              <p class="text-xs text-muted border-b pb-2 mb-2">
+                Analyse sur les 20 derniers messages du chat
+              </p>
               <div>
                 <label class="text-sm font-medium mb-2 block">
-                  Seuil badge: {{ Math.round(commandThreshold * 100) }}%
+                  Seuil badge: {{ Math.round(commandThreshold * 100) }}% ({{ Math.round(20 * commandThreshold) }}+ msg)
                 </label>
                 <input
                   type="range"
@@ -738,7 +741,7 @@ function handleQualityChange(channel: string, quality: string) {
               </div>
               <div>
                 <label class="text-sm font-medium mb-2 block">
-                  Seuil alerte: {{ Math.round(alertThreshold * 100) }}%
+                  Seuil alerte: {{ Math.round(alertThreshold * 100) }}% ({{ Math.round(20 * alertThreshold) }}+ msg)
                 </label>
                 <input
                   type="range"
