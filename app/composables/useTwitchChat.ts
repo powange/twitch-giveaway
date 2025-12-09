@@ -260,13 +260,22 @@ export function useTwitchChat(callbacks?: ChatCallbacks, options?: ChatOptions) 
     ws.value = null
   })
 
+  // Recalculer la détection pour tous les channels
+  function reanalyzeAllChannels() {
+    for (const channel of connectedChannels.value) {
+      analyzeBuffer(channel)
+    }
+  }
+
   // Mettre à jour les seuils
   function setCommandThreshold(value: number) {
     commandThreshold.value = Math.max(0.05, Math.min(1, value))
+    reanalyzeAllChannels()
   }
 
   function setAlertThreshold(value: number) {
     alertThreshold.value = Math.max(0.05, Math.min(1, value))
+    reanalyzeAllChannels()
   }
 
   return {
