@@ -18,6 +18,9 @@ const {
   setAlertThreshold
 } = useTwitchChat({
   onGiveawayDetected: (channel, command, percentage) => {
+    // Ne pas alerter si le stream est déjà en focus
+    if (focusedChannel.value === channel) return
+
     // Focus le stream
     focusedChannel.value = channel
     // Ouvrir la modal d'alerte automatique
