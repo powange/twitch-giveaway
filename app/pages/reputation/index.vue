@@ -1,0 +1,496 @@
+<script setup lang="ts">
+import type { TableColumn } from '@nuxt/ui'
+
+interface UserInfo {
+  id: number
+  username: string
+}
+
+interface FactionInfo {
+  id: number
+  key: string
+  name: string
+  motto: string
+}
+
+interface EmblemInfo {
+  id: number
+  key: string
+  name: string
+  description: string
+  image: string
+  maxGrade: number
+  campaignId: number
+  factionKey: string
+  campaignName: string
+}
+
+interface UserEmblemProgress {
+  userId: number
+  username: string
+  value: number
+  threshold: number
+  grade: number
+  completed: boolean
+}
+
+interface CampaignWithEmblems {
+  id: number
+  key: string
+  name: string
+  factionId: number
+  emblems: Array<EmblemInfo & { userProgress: Record<number, UserEmblemProgress> }>
+}
+
+interface FactionWithCampaigns extends FactionInfo {
+  campaigns: CampaignWithEmblems[]
+}
+
+interface ReputationData {
+  users: UserInfo[]
+  factions: FactionWithCampaigns[]
+}
+
+interface TableRow {
+  id: number
+  name: string
+  description: string
+  image: string
+  [key: string]: string | number | boolean | undefined
+}
+
+const toast = useToast()
+
+// Données de réputation
+const { data: reputationData, refresh } = await useFetch<ReputationData>('/api/reputation')
+
+// État du formulaire d'import
+const isImportModalOpen = ref(false)
+const importForm = ref({
+  username: '',
+  password: '',
+  jsonText: ''
+})
+const isImporting = ref(false)
+
+// Faction sélectionnée
+const selectedFactionKey = ref<string>('')
+
+// Utilisateurs sélectionnés pour l'affichage
+const selectedUserIds = ref<number[]>([])
+
+// Campagnes sélectionnées pour l'affichage
+const selectedCampaignIds = ref<number[]>([])
+
+// Initialiser la faction sélectionnée et les utilisateurs
+watch(reputationData, (data) => {
+  if (data?.factions && data.factions.length > 0 && !selectedFactionKey.value) {
+    const firstFaction = data.factions[0]
+    if (firstFaction) {
+      selectedFactionKey.value = firstFaction.key
+    }
+  }
+  // Sélectionner tous les utilisateurs par défaut
+  if (data?.users && selectedUserIds.value.length === 0) {
+    selectedUserIds.value = data.users.map(u => u.id)
+  }
+}, { immediate: true })
+
+const selectedFaction = computed(() => {
+  return reputationData.value?.factions.find(f => f.key === selectedFactionKey.value)
+})
+
+// Quand la faction change, sélectionner toutes ses campagnes par défaut
+watch(selectedFaction, (faction) => {
+  if (faction?.campaigns) {
+    selectedCampaignIds.value = faction.campaigns.map(c => c.id)
+  }
+}, { immediate: true })
+
+// Vérifier si la faction a plusieurs campagnes (pas juste "default")
+const hasMultipleCampaigns = computed(() => {
+  if (!selectedFaction.value?.campaigns) return false
+  return selectedFaction.value.campaigns.length > 1 ||
+    (selectedFaction.value.campaigns.length === 1 && selectedFaction.value.campaigns[0].key !== 'default')
+})
+
+// Campagnes filtrées
+const filteredCampaigns = computed(() => {
+  if (!selectedFaction.value?.campaigns) return []
+  return selectedFaction.value.campaigns.filter(c => selectedCampaignIds.value.includes(c.id))
+})
+
+const users = computed(() => reputationData.value?.users || [])
+
+const selectedUsers = computed(() => {
+  return users.value.filter(u => selectedUserIds.value.includes(u.id))
+})
+
+// Générer les colonnes dynamiquement
+const columns = computed<TableColumn<TableRow>[]>(() => {
+  const cols: TableColumn<TableRow>[] = [
+    {
+      accessorKey: 'name',
+      header: 'Succes',
+      cell: ({ row }) => {
+        const children = []
+
+        // Image si disponible
+        if (row.original.image) {
+          children.push(h('img', {
+            src: row.original.image,
+            alt: row.original.name,
+            class: 'w-10 h-10 object-contain shrink-0'
+          }))
+        }
+
+        // Texte (nom + description)
+        children.push(h('div', {}, [
+          h('div', { class: 'font-medium' }, row.original.name),
+          h('div', { class: 'text-xs text-muted' }, row.original.description)
+        ]))
+
+        return h('div', { class: 'flex items-center gap-3' }, children)
+      }
+    }
+  ]
+
+  // Ajouter une colonne par utilisateur sélectionné
+  for (const user of selectedUsers.value) {
+    cols.push({
+      accessorKey: `user_${user.id}`,
+      header: user.username,
+      cell: ({ row }) => {
+        const value = row.original[`user_${user.id}_display`] as string
+        const completed = row.original[`user_${user.id}_completed`] as boolean
+        const hasProgress = row.original[`user_${user.id}_hasProgress`] as boolean
+
+        let colorClass = 'text-muted'
+        if (completed) {
+          colorClass = 'text-success font-medium'
+        } else if (hasProgress) {
+          colorClass = 'text-warning'
+        }
+
+        return h('span', { class: colorClass }, value)
+      }
+    })
+  }
+
+  return cols
+})
+
+// Transformer les emblèmes en données de table
+function getTableData(emblems: Array<EmblemInfo & { userProgress: Record<number, UserEmblemProgress> }>): TableRow[] {
+  return emblems.map(emblem => {
+    const row: TableRow = {
+      id: emblem.id,
+      name: emblem.name,
+      description: emblem.description,
+      image: emblem.image || ''
+    }
+
+    for (const user of selectedUsers.value) {
+      const progress = emblem.userProgress[user.id]
+      if (progress) {
+        row[`user_${user.id}_display`] = progress.threshold > 0
+          ? `${progress.value}/${progress.threshold}`
+          : (progress.completed ? 'Oui' : 'Non')
+        row[`user_${user.id}_completed`] = progress.completed
+        row[`user_${user.id}_hasProgress`] = progress.value > 0
+      } else {
+        row[`user_${user.id}_display`] = '-'
+        row[`user_${user.id}_completed`] = false
+        row[`user_${user.id}_hasProgress`] = false
+      }
+    }
+
+    return row
+  })
+}
+
+function toggleUser(userId: number) {
+  const index = selectedUserIds.value.indexOf(userId)
+  if (index === -1) {
+    selectedUserIds.value.push(userId)
+  } else if (selectedUserIds.value.length > 1) {
+    // Garder au moins un utilisateur
+    selectedUserIds.value.splice(index, 1)
+  }
+}
+
+function toggleCampaign(campaignId: number) {
+  const index = selectedCampaignIds.value.indexOf(campaignId)
+  if (index === -1) {
+    selectedCampaignIds.value.push(campaignId)
+  } else if (selectedCampaignIds.value.length > 1) {
+    // Garder au moins une campagne
+    selectedCampaignIds.value.splice(index, 1)
+  }
+}
+
+async function submitImport() {
+  if (!importForm.value.username || !importForm.value.password || !importForm.value.jsonText) {
+    toast.add({
+      title: 'Erreur',
+      description: 'Tous les champs sont requis',
+      color: 'error'
+    })
+    return
+  }
+
+  let jsonData: unknown
+  try {
+    jsonData = JSON.parse(importForm.value.jsonText)
+  } catch {
+    toast.add({
+      title: 'Erreur',
+      description: 'JSON invalide',
+      color: 'error'
+    })
+    return
+  }
+
+  isImporting.value = true
+
+  try {
+    const result = await $fetch('/api/reputation/import', {
+      method: 'POST',
+      body: {
+        username: importForm.value.username,
+        password: importForm.value.password,
+        jsonData
+      }
+    })
+
+    toast.add({
+      title: 'Succes',
+      description: (result as { message: string }).message,
+      color: 'success'
+    })
+
+    isImportModalOpen.value = false
+    importForm.value = { username: '', password: '', jsonText: '' }
+    await refresh()
+  } catch (error) {
+    toast.add({
+      title: 'Erreur',
+      description: (error as { data?: { message?: string } }).data?.message || 'Erreur lors de l\'import',
+      color: 'error'
+    })
+  } finally {
+    isImporting.value = false
+  }
+}
+</script>
+
+<template>
+  <UContainer class="py-8">
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h1 class="text-3xl font-bold">
+          Reputations Sea of Thieves
+        </h1>
+        <p class="text-muted mt-1">
+          Comparez votre progression avec les autres pirates
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <UButton
+          to="/reputation/tutoriel"
+          icon="i-lucide-help-circle"
+          label="Comment faire ?"
+          variant="outline"
+        />
+        <UButton
+          icon="i-lucide-upload"
+          label="Importer mes donnees"
+          @click="isImportModalOpen = true"
+        />
+      </div>
+    </div>
+
+    <!-- Message si pas de données -->
+    <div
+      v-if="!users.length"
+      class="text-center py-16"
+    >
+      <UIcon
+        name="i-lucide-anchor"
+        class="w-16 h-16 text-muted mx-auto mb-4"
+      />
+      <h2 class="text-xl font-semibold mb-2">
+        Aucune donnee de reputation
+      </h2>
+      <p class="text-muted mb-4">
+        Soyez le premier a importer vos donnees de reputation !
+      </p>
+      <UButton
+        icon="i-lucide-upload"
+        label="Importer mes donnees"
+        @click="isImportModalOpen = true"
+      />
+    </div>
+
+    <template v-else>
+      <!-- Filtres -->
+      <UCard class="mb-6">
+        <div class="space-y-4">
+          <!-- Sélection de faction -->
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-sm font-medium text-muted">Faction :</span>
+            <UButton
+              v-for="faction in reputationData?.factions"
+              :key="faction.key"
+              :color="selectedFactionKey === faction.key ? 'primary' : 'neutral'"
+              :variant="selectedFactionKey === faction.key ? 'solid' : 'outline'"
+              size="sm"
+              @click="selectedFactionKey = faction.key"
+            >
+              {{ faction.name }}
+            </UButton>
+          </div>
+
+          <!-- Sélection des utilisateurs -->
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-sm font-medium text-muted">Utilisateurs :</span>
+            <UButton
+              v-for="user in users"
+              :key="user.id"
+              :color="selectedUserIds.includes(user.id) ? 'success' : 'neutral'"
+              :variant="selectedUserIds.includes(user.id) ? 'solid' : 'outline'"
+              size="sm"
+              @click="toggleUser(user.id)"
+            >
+              {{ user.username }}
+            </UButton>
+          </div>
+
+          <!-- Sélection des campagnes (si la faction en a plusieurs) -->
+          <div
+            v-if="hasMultipleCampaigns"
+            class="flex items-center gap-3 flex-wrap"
+          >
+            <span class="text-sm font-medium text-muted">Campagnes :</span>
+            <UButton
+              v-for="campaign in selectedFaction?.campaigns"
+              :key="campaign.id"
+              :color="selectedCampaignIds.includes(campaign.id) ? 'info' : 'neutral'"
+              :variant="selectedCampaignIds.includes(campaign.id) ? 'solid' : 'outline'"
+              size="sm"
+              @click="toggleCampaign(campaign.id)"
+            >
+              {{ campaign.name }}
+            </UButton>
+          </div>
+        </div>
+
+        <p
+          v-if="selectedFaction?.motto"
+          class="text-sm text-muted mt-4 italic"
+        >
+          "{{ selectedFaction.motto }}"
+        </p>
+      </UCard>
+
+      <!-- Tableau des succès -->
+      <template v-if="selectedFaction">
+        <div
+          v-for="campaign in filteredCampaigns"
+          :key="campaign.id"
+          class="mb-8"
+        >
+          <h3
+            v-if="campaign.key !== 'default'"
+            class="text-lg font-semibold mb-4"
+          >
+            {{ campaign.name }}
+          </h3>
+
+          <UTable
+            :data="getTableData(campaign.emblems)"
+            :columns="columns"
+          />
+        </div>
+      </template>
+    </template>
+
+    <!-- Modal d'import -->
+    <UModal v-model:open="isImportModalOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <h2 class="text-xl font-semibold">
+              Importer vos donnees de reputation
+            </h2>
+          </template>
+
+          <div class="space-y-4">
+            <UAlert
+              icon="i-lucide-info"
+              color="info"
+              title="Besoin d'aide ?"
+            >
+              <template #description>
+                <p class="text-sm mb-2">
+                  Consultez notre tutoriel detaille pour apprendre a recuperer vos donnees.
+                </p>
+                <UButton
+                  to="/reputation/tutoriel"
+                  size="xs"
+                  variant="outline"
+                  icon="i-lucide-book-open"
+                  label="Voir le tutoriel"
+                  @click="isImportModalOpen = false"
+                />
+              </template>
+            </UAlert>
+
+            <UFormField label="Pseudo" class="w-full">
+              <UInput
+                v-model="importForm.username"
+                placeholder="Votre pseudo de pirate"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField label="Mot de passe" class="w-full">
+              <UInput
+                v-model="importForm.password"
+                type="password"
+                placeholder="Creez un mot de passe pour mettre a jour vos donnees"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField label="Donnees JSON" class="w-full">
+              <UTextarea
+                v-model="importForm.jsonText"
+                placeholder="Collez ici le JSON de l'API reputation..."
+                :rows="10"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
+
+          <template #footer>
+            <div class="flex justify-end gap-2">
+              <UButton
+                label="Annuler"
+                color="neutral"
+                variant="outline"
+                @click="isImportModalOpen = false"
+              />
+              <UButton
+                label="Importer"
+                icon="i-lucide-upload"
+                :loading="isImporting"
+                @click="submitImport"
+              />
+            </div>
+          </template>
+        </UCard>
+      </template>
+    </UModal>
+  </UContainer>
+</template>
