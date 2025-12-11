@@ -4,6 +4,7 @@ import type { TableColumn } from '@nuxt/ui'
 interface UserInfo {
   id: number
   username: string
+  lastImportAt: string | null
 }
 
 interface FactionInfo {
@@ -162,6 +163,19 @@ const filteredUsers = computed(() => {
 })
 
 const users = computed(() => reputationData.value?.users || [])
+
+// Formater la date du dernier import
+function formatLastImport(dateStr: string | null): string {
+  if (!dateStr) return 'Jamais importé'
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
 const selectedUsers = computed(() => {
   return users.value.filter(u => selectedUserIds.value.includes(u.id))
@@ -413,16 +427,20 @@ async function submitImport() {
           <!-- Sélection des utilisateurs -->
           <div class="flex items-center gap-3 flex-wrap">
             <span class="text-sm font-medium text-muted">Utilisateurs :</span>
-            <UButton
+            <UTooltip
               v-for="user in users"
               :key="user.id"
-              :color="selectedUserIds.includes(user.id) ? 'success' : 'neutral'"
-              :variant="selectedUserIds.includes(user.id) ? 'solid' : 'outline'"
-              size="sm"
-              @click="toggleUser(user.id)"
+              :text="`Dernier import : ${formatLastImport(user.lastImportAt)}`"
             >
-              {{ user.username }}
-            </UButton>
+              <UButton
+                :color="selectedUserIds.includes(user.id) ? 'success' : 'neutral'"
+                :variant="selectedUserIds.includes(user.id) ? 'solid' : 'outline'"
+                size="sm"
+                @click="toggleUser(user.id)"
+              >
+                {{ user.username }}
+              </UButton>
+            </UTooltip>
           </div>
 
           <!-- Filtre de complétion des utilisateurs -->

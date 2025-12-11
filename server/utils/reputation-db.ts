@@ -16,7 +16,8 @@ export function getReputationDb(): Database.Database {
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_import_at DATETIME
     );
 
     CREATE TABLE IF NOT EXISTS factions (
@@ -65,6 +66,13 @@ export function getReputationDb(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_user_emblems_user ON user_emblems(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_emblems_emblem ON user_emblems(emblem_id);
   `)
+
+  // Migration: ajouter last_import_at si la colonne n'existe pas
+  const columns = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>
+  const hasLastImportAt = columns.some(col => col.name === 'last_import_at')
+  if (!hasLastImportAt) {
+    db.exec('ALTER TABLE users ADD COLUMN last_import_at DATETIME')
+  }
 
   return db
 }
@@ -153,7 +161,14 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
       completed = excluded.completed
   `)
 
+  const updateLastImport = db.prepare(`
+    UPDATE users SET last_import_at = CURRENT_TIMESTAMP WHERE id = ?
+  `)
+
   const transaction = db.transaction(() => {
+    // Mettre à jour la date du dernier import
+    updateLastImport.run(userId)
+
     for (const [factionKey, factionData] of Object.entries(jsonData)) {
       // Ignorer les factions non reconnues (guildes avec UUID, etc.)
       if (!VALID_FACTIONS.includes(factionKey)) continue
@@ -240,6 +255,7 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
 export interface UserInfo {
   id: number
   username: string
+  lastImportAt: string | null
 }
 
 export interface FactionInfo {
@@ -279,7 +295,7 @@ export interface UserEmblemProgress {
 
 export function getAllUsers(): UserInfo[] {
   const db = getReputationDb()
-  return db.prepare('SELECT id, username FROM users ORDER BY username').all() as UserInfo[]
+  return db.prepare('SELECT id, username, last_import_at as lastImportAt FROM users ORDER BY username').all() as UserInfo[]
 }
 
 export function getAllFactions(): FactionInfo[] {
