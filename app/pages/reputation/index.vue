@@ -214,7 +214,10 @@ const columns = computed<TableColumn<TableRow>[]>(() => {
   for (const user of filteredUsers.value) {
     cols.push({
       accessorKey: `user_${user.id}`,
-      header: user.username,
+      header: () => h('div', { class: 'text-center' }, [
+        h('div', { class: 'font-medium' }, user.username),
+        h('div', { class: 'text-xs text-muted font-normal' }, formatLastImport(user.lastImportAt))
+      ]),
       cell: ({ row }) => {
         const value = row.original[`user_${user.id}_display`] as string
         const completed = row.original[`user_${user.id}_completed`] as boolean
