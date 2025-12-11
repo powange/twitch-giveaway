@@ -186,9 +186,10 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
 
   // Requête pour migrer les anciens emblèmes (clé = nom traduit) vers la nouvelle clé (.png)
   // On garde les données existantes et on met à jour la clé
+  // On compare sur la fin de l'URL (le nom du fichier .png) car la version peut changer
   const migrateOldEmblems = db.prepare(`
     UPDATE emblems SET key = ?
-    WHERE campaign_id = ? AND image = ? AND key != ?
+    WHERE campaign_id = ? AND image LIKE ? AND key != ?
   `)
 
   const transaction = db.transaction(() => {
@@ -223,9 +224,7 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
               if (!emblemKey) continue
 
               // Migrer l'ancien emblème (clé = nom traduit) vers la nouvelle clé (.png)
-              if (emblem.image) {
-                migrateOldEmblems.run(emblemKey, campaignId, emblem.image, emblemKey)
-              }
+              migrateOldEmblems.run(emblemKey, campaignId, '%' + emblemKey, emblemKey)
 
               insertEmblem.run(
                 campaignId,
@@ -263,9 +262,7 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
           if (!emblemKey) continue
 
           // Migrer l'ancien emblème (clé = nom traduit) vers la nouvelle clé (.png)
-          if (emblem.image) {
-            migrateOldEmblems.run(emblemKey, campaignId, emblem.image, emblemKey)
-          }
+          migrateOldEmblems.run(emblemKey, campaignId, '%' + emblemKey, emblemKey)
 
           insertEmblem.run(
             campaignId,
