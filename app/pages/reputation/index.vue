@@ -444,8 +444,8 @@ async function submitImport() {
             />
           </div>
 
-          <!-- Sélection de faction -->
-          <div class="flex items-center gap-3 flex-wrap">
+          <!-- Sélection de faction (masqué si recherche active) -->
+          <div v-if="!isSearchActive" class="flex items-center gap-3 flex-wrap">
             <span class="text-sm font-medium text-muted">Faction :</span>
             <UButton
               v-for="faction in reputationData?.factions"
@@ -459,9 +459,9 @@ async function submitImport() {
             </UButton>
           </div>
 
-          <!-- Sélection des campagnes (si la faction en a plusieurs) -->
+          <!-- Sélection des campagnes (masqué si recherche active) -->
           <div
-            v-if="hasMultipleCampaigns"
+            v-if="!isSearchActive && hasMultipleCampaigns"
             class="flex items-center gap-3 flex-wrap"
           >
             <span class="text-sm font-medium text-muted">Campagnes :</span>
@@ -496,8 +496,8 @@ async function submitImport() {
             </UTooltip>
           </div>
 
-          <!-- Filtre de complétion des utilisateurs -->
-          <div class="flex items-center gap-3 flex-wrap">
+          <!-- Filtre de complétion des utilisateurs (masqué si recherche active) -->
+          <div v-if="!isSearchActive" class="flex items-center gap-3 flex-wrap">
             <span class="text-sm font-medium text-muted">Filtrer utilisateurs :</span>
             <UButton
               :color="userCompletionFilter === 'all' ? 'primary' : 'neutral'"
@@ -527,7 +527,7 @@ async function submitImport() {
         </div>
 
         <p
-          v-if="selectedFaction?.motto"
+          v-if="!isSearchActive && selectedFaction?.motto"
           class="text-sm text-muted mt-4 italic"
         >
           "{{ selectedFaction.motto }}"
