@@ -89,6 +89,9 @@ const userCompletionFilter = ref<'all' | 'incomplete' | 'complete'>('all')
 // Recherche dans les succès
 const searchQuery = ref('')
 
+// Détecte si une recherche est active
+const isSearchActive = computed(() => searchQuery.value.trim().length > 0)
+
 // Initialiser la faction sélectionnée et les utilisateurs
 watch(reputationData, (data, oldData) => {
   if (data?.factions && data.factions.length > 0 && !selectedFactionKey.value) {
@@ -134,6 +137,39 @@ const hasMultipleCampaigns = computed(() => {
 const filteredCampaigns = computed(() => {
   if (!selectedFaction.value?.campaigns) return []
   return selectedFaction.value.campaigns.filter(c => selectedCampaignIds.value.includes(c.id))
+})
+
+// Résultats de recherche globaux (toutes factions/campagnes)
+const searchResults = computed(() => {
+  if (!isSearchActive.value || !reputationData.value?.factions) return []
+
+  const query = searchQuery.value.toLowerCase().trim()
+  const results: Array<{
+    factionName: string
+    campaignName: string
+    campaignKey: string
+    emblems: Array<EmblemInfo & { userProgress: Record<number, UserEmblemProgress> }>
+  }> = []
+
+  for (const faction of reputationData.value.factions) {
+    for (const campaign of faction.campaigns) {
+      const matchingEmblems = campaign.emblems.filter(e =>
+        e.name.toLowerCase().includes(query) ||
+        e.description.toLowerCase().includes(query)
+      )
+
+      if (matchingEmblems.length > 0) {
+        results.push({
+          factionName: faction.name,
+          campaignName: campaign.name,
+          campaignKey: campaign.key,
+          emblems: matchingEmblems
+        })
+      }
+    }
+  }
+
+  return results
 })
 
 // Calculer si un utilisateur a tout complété dans les campagnes sélectionnées
@@ -243,16 +279,7 @@ const columns = computed<TableColumn<TableRow>[]>(() => {
 
 // Transformer les emblèmes en données de table
 function getTableData(emblems: Array<EmblemInfo & { userProgress: Record<number, UserEmblemProgress> }>): TableRow[] {
-  // Filtrer par recherche
-  const query = searchQuery.value.toLowerCase().trim()
-  const filteredEmblems = query
-    ? emblems.filter(e =>
-        e.name.toLowerCase().includes(query) ||
-        e.description.toLowerCase().includes(query)
-      )
-    : emblems
-
-  return filteredEmblems.map(emblem => {
+  return emblems.map(emblem => {
     const row: TableRow = {
       id: emblem.id,
       name: emblem.name,
@@ -507,8 +534,32 @@ async function submitImport() {
         </p>
       </UCard>
 
-      <!-- Tableau des succès -->
-      <template v-if="selectedFaction">
+      <!-- Résultats de recherche globaux -->
+      <template v-if="isSearchActive">
+        <div v-if="searchResults.length === 0" class="text-center py-8 text-muted">
+          Aucun succes trouve pour "{{ searchQuery }}"
+        </div>
+        <div
+          v-for="(result, index) in searchResults"
+          :key="`${result.factionName}-${result.campaignKey}-${index}`"
+          class="mb-8"
+        >
+          <h3 class="text-lg font-semibold mb-4">
+            {{ result.factionName }}
+            <span v-if="result.campaignKey !== 'default'" class="text-muted font-normal">
+              / {{ result.campaignName }}
+            </span>
+          </h3>
+
+          <UTable
+            :data="getTableData(result.emblems)"
+            :columns="columns"
+          />
+        </div>
+      </template>
+
+      <!-- Tableau des succès (sans recherche) -->
+      <template v-else-if="selectedFaction">
         <div
           v-for="campaign in filteredCampaigns"
           :key="campaign.id"
