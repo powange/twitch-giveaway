@@ -317,12 +317,21 @@ function toggleUser(userId: number) {
 }
 
 function toggleCampaign(campaignId: number) {
-  const index = selectedCampaignIds.value.indexOf(campaignId)
-  if (index === -1) {
-    selectedCampaignIds.value.push(campaignId)
-  } else if (selectedCampaignIds.value.length > 1) {
-    // Garder au moins une campagne
-    selectedCampaignIds.value.splice(index, 1)
+  const allCampaignIds = selectedFaction.value?.campaigns.map(c => c.id) || []
+  const allSelected = selectedCampaignIds.value.length === allCampaignIds.length
+
+  if (allSelected) {
+    // Toutes les campagnes sont sélectionnées : ne garder que celle cliquée
+    selectedCampaignIds.value = [campaignId]
+  } else {
+    // Mode toggle normal
+    const index = selectedCampaignIds.value.indexOf(campaignId)
+    if (index === -1) {
+      selectedCampaignIds.value.push(campaignId)
+    } else if (selectedCampaignIds.value.length > 1) {
+      // Garder au moins une campagne
+      selectedCampaignIds.value.splice(index, 1)
+    }
   }
 }
 
