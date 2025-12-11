@@ -184,9 +184,42 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
     UPDATE users SET last_import_at = CURRENT_TIMESTAMP WHERE id = ?
   `)
 
+  // Requêtes pour nettoyer les doublons (anciens emblèmes avec clé = nom traduit)
+  const findDuplicateEmblems = db.prepare(`
+    SELECT e1.id as old_id, e2.id as new_id
+    FROM emblems e1
+    JOIN emblems e2 ON e1.campaign_id = e2.campaign_id
+      AND e1.image = e2.image
+      AND e1.id != e2.id
+    WHERE e1.key NOT LIKE '%.png' AND e2.key LIKE '%.png'
+  `)
+
+  const migrateUserEmblems = db.prepare(`
+    UPDATE OR IGNORE user_emblems SET emblem_id = ? WHERE emblem_id = ?
+  `)
+
+  const deleteOrphanUserEmblems = db.prepare(`
+    DELETE FROM user_emblems WHERE emblem_id = ?
+  `)
+
+  const deleteOldEmblem = db.prepare(`
+    DELETE FROM emblems WHERE id = ?
+  `)
+
   const transaction = db.transaction(() => {
     // Mettre à jour la date du dernier import
     updateLastImport.run(userId)
+
+    // Nettoyer les doublons existants
+    const duplicates = findDuplicateEmblems.all() as Array<{ old_id: number, new_id: number }>
+    for (const dup of duplicates) {
+      // Migrer les données utilisateur vers le nouvel emblème
+      migrateUserEmblems.run(dup.new_id, dup.old_id)
+      // Supprimer les user_emblems orphelins (en cas de conflit)
+      deleteOrphanUserEmblems.run(dup.old_id)
+      // Supprimer l'ancien emblème
+      deleteOldEmblem.run(dup.old_id)
+    }
 
     for (const [factionKey, factionData] of Object.entries(jsonData)) {
       // Ignorer les factions non reconnues (guildes avec UUID, etc.)
