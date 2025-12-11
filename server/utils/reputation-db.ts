@@ -116,6 +116,7 @@ interface EmblemData {
   DisplayName?: string
   '#Name'?: string
   Description?: string
+  Image?: string
   image?: string
   MaxGrade?: number
   Value?: number
@@ -211,13 +212,13 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
           if (campaignData.Emblems) {
             for (let j = 0; j < campaignData.Emblems.length; j++) {
               const emblem = campaignData.Emblems[j]!
-              const emblemKey = emblem['#Name'] || emblem.DisplayName || ''
+              const emblemKey = emblem.Image || ''
               if (!emblemKey) continue
 
               insertEmblem.run(
                 campaignId,
                 emblemKey,
-                emblem.DisplayName || emblemKey,
+                emblem.DisplayName || emblem['#Name'] || emblemKey,
                 emblem.Description || '',
                 emblem.image || '',
                 emblem.MaxGrade || 5,
@@ -246,13 +247,13 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
         const emblems = factionData.Emblems?.Emblems || []
         for (let j = 0; j < emblems.length; j++) {
           const emblem = emblems[j]!
-          const emblemKey = emblem['#Name'] || emblem.DisplayName || ''
+          const emblemKey = emblem.Image || ''
           if (!emblemKey) continue
 
           insertEmblem.run(
             campaignId,
             emblemKey,
-            emblem.DisplayName || emblemKey,
+            emblem.DisplayName || emblem['#Name'] || emblemKey,
             emblem.Description || '',
             emblem.image || '',
             emblem.MaxGrade || 5,
