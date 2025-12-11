@@ -86,6 +86,9 @@ const selectedCampaignIds = ref<number[]>([])
 // Filtre de complétion des utilisateurs : 'all' | 'incomplete' | 'complete'
 const userCompletionFilter = ref<'all' | 'incomplete' | 'complete'>('all')
 
+// Recherche dans les succès
+const searchQuery = ref('')
+
 // Initialiser la faction sélectionnée et les utilisateurs
 watch(reputationData, (data, oldData) => {
   if (data?.factions && data.factions.length > 0 && !selectedFactionKey.value) {
@@ -240,7 +243,16 @@ const columns = computed<TableColumn<TableRow>[]>(() => {
 
 // Transformer les emblèmes en données de table
 function getTableData(emblems: Array<EmblemInfo & { userProgress: Record<number, UserEmblemProgress> }>): TableRow[] {
-  return emblems.map(emblem => {
+  // Filtrer par recherche
+  const query = searchQuery.value.toLowerCase().trim()
+  const filteredEmblems = query
+    ? emblems.filter(e =>
+        e.name.toLowerCase().includes(query) ||
+        e.description.toLowerCase().includes(query)
+      )
+    : emblems
+
+  return filteredEmblems.map(emblem => {
     const row: TableRow = {
       id: emblem.id,
       name: emblem.name,
@@ -473,6 +485,17 @@ async function submitImport() {
             >
               Completes
             </UButton>
+          </div>
+
+          <!-- Recherche dans les succès -->
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-muted">Recherche :</span>
+            <UInput
+              v-model="searchQuery"
+              placeholder="Rechercher un succes..."
+              icon="i-lucide-search"
+              class="max-w-xs"
+            />
           </div>
         </div>
 
