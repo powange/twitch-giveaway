@@ -45,6 +45,7 @@ export function getReputationDb(): Database.Database {
       description TEXT,
       image TEXT,
       max_grade INTEGER DEFAULT 5,
+      sort_order INTEGER DEFAULT 0,
       FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
       UNIQUE(campaign_id, key)
     );
@@ -80,6 +81,13 @@ export function getReputationDb(): Database.Database {
   const hasSortOrder = campaignColumns.some(col => col.name === 'sort_order')
   if (!hasSortOrder) {
     db.exec('ALTER TABLE campaigns ADD COLUMN sort_order INTEGER DEFAULT 0')
+  }
+
+  // Migration: ajouter sort_order aux emblèmes si la colonne n'existe pas
+  const emblemColumns = db.prepare("PRAGMA table_info(emblems)").all() as Array<{ name: string }>
+  const hasEmblemSortOrder = emblemColumns.some(col => col.name === 'sort_order')
+  if (!hasEmblemSortOrder) {
+    db.exec('ALTER TABLE emblems ADD COLUMN sort_order INTEGER DEFAULT 0')
   }
 
   return db
@@ -150,10 +158,11 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
   `)
 
   const insertEmblem = db.prepare(`
-    INSERT INTO emblems (campaign_id, key, name, description, image, max_grade)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO emblems (campaign_id, key, name, description, image, max_grade, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(campaign_id, key) DO UPDATE SET
-      image = COALESCE(excluded.image, emblems.image)
+      image = COALESCE(excluded.image, emblems.image),
+      sort_order = excluded.sort_order
   `)
 
   const getEmblemId = db.prepare(`
@@ -192,7 +201,7 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
       if (factionData.Campaigns) {
         const campaignEntries = Object.entries(factionData.Campaigns)
         for (let i = 0; i < campaignEntries.length; i++) {
-          const [campaignKey, campaignData] = campaignEntries[i]
+          const [campaignKey, campaignData] = campaignEntries[i]!
           const campaignName = campaignData.Title || campaignKey
           insertCampaign.run(factionId, campaignKey, campaignName, i)
 
@@ -200,7 +209,8 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
           const campaignId = campaignRow.id
 
           if (campaignData.Emblems) {
-            for (const emblem of campaignData.Emblems) {
+            for (let j = 0; j < campaignData.Emblems.length; j++) {
+              const emblem = campaignData.Emblems[j]!
               const emblemKey = emblem['#Name'] || emblem.DisplayName || ''
               if (!emblemKey) continue
 
@@ -210,7 +220,8 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
                 emblem.DisplayName || emblemKey,
                 emblem.Description || '',
                 emblem.image || '',
-                emblem.MaxGrade || 5
+                emblem.MaxGrade || 5,
+                j
               )
 
               const emblemRow = getEmblemId.get(campaignId, emblemKey) as { id: number }
@@ -233,7 +244,8 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
         const campaignId = campaignRow.id
 
         const emblems = factionData.Emblems?.Emblems || []
-        for (const emblem of emblems) {
+        for (let j = 0; j < emblems.length; j++) {
+          const emblem = emblems[j]!
           const emblemKey = emblem['#Name'] || emblem.DisplayName || ''
           if (!emblemKey) continue
 
@@ -243,7 +255,8 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
             emblem.DisplayName || emblemKey,
             emblem.Description || '',
             emblem.image || '',
-            emblem.MaxGrade || 5
+            emblem.MaxGrade || 5,
+            j
           )
 
           const emblemRow = getEmblemId.get(campaignId, emblemKey) as { id: number }
@@ -341,7 +354,7 @@ export function getEmblemsByFaction(factionKey: string): EmblemInfo[] {
     JOIN campaigns c ON e.campaign_id = c.id
     JOIN factions f ON c.faction_id = f.id
     WHERE f.key = ?
-    ORDER BY c.name, e.name
+    ORDER BY c.sort_order, c.id, e.sort_order, e.id
   `).all(factionKey) as EmblemInfo[]
 }
 
@@ -395,7 +408,7 @@ export function getFullReputationData() {
           id, key, name, description, image, max_grade as maxGrade, campaign_id as campaignId
         FROM emblems
         WHERE campaign_id = ?
-        ORDER BY name
+        ORDER BY sort_order, id
       `).all(campaign.id) as EmblemInfo[]
 
       const emblemsWithProgress = emblems.map((emblem) => {
