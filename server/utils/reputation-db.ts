@@ -184,42 +184,16 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
     UPDATE users SET last_import_at = CURRENT_TIMESTAMP WHERE id = ?
   `)
 
-  // Requêtes pour nettoyer les doublons (anciens emblèmes avec clé = nom traduit)
-  // On garde l'ancien (avec les données) et on met à jour sa clé vers le .png
-  const findDuplicateEmblems = db.prepare(`
-    SELECT e1.id as old_id, e1.key as old_key, e2.id as new_id, e2.key as new_key
-    FROM emblems e1
-    JOIN emblems e2 ON e1.campaign_id = e2.campaign_id
-      AND e1.image = e2.image
-      AND e1.id != e2.id
-    WHERE e1.key NOT LIKE '%.png' AND e2.key LIKE '%.png'
-  `)
-
-  const deleteUserEmblemsByEmblemId = db.prepare(`
-    DELETE FROM user_emblems WHERE emblem_id = ?
-  `)
-
-  const deleteEmblem = db.prepare(`
-    DELETE FROM emblems WHERE id = ?
-  `)
-
-  const updateEmblemKey = db.prepare(`
-    UPDATE emblems SET key = ? WHERE id = ?
+  // Requête pour migrer les anciens emblèmes (clé = nom traduit) vers la nouvelle clé (.png)
+  // On garde les données existantes et on met à jour la clé
+  const migrateOldEmblems = db.prepare(`
+    UPDATE emblems SET key = ?
+    WHERE campaign_id = ? AND image = ? AND key != ?
   `)
 
   const transaction = db.transaction(() => {
     // Mettre à jour la date du dernier import
     updateLastImport.run(userId)
-
-    // Nettoyer les doublons existants
-    const duplicates = findDuplicateEmblems.all() as Array<{ old_id: number, old_key: string, new_id: number, new_key: string }>
-    for (const dup of duplicates) {
-      // Supprimer le nouvel emblème (vide) et ses éventuelles données
-      deleteUserEmblemsByEmblemId.run(dup.new_id)
-      deleteEmblem.run(dup.new_id)
-      // Mettre à jour la clé de l'ancien emblème vers le .png
-      updateEmblemKey.run(dup.new_key, dup.old_id)
-    }
 
     for (const [factionKey, factionData] of Object.entries(jsonData)) {
       // Ignorer les factions non reconnues (guildes avec UUID, etc.)
@@ -247,6 +221,11 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
               const emblem = campaignData.Emblems[j]!
               const emblemKey = emblem.Image || ''
               if (!emblemKey) continue
+
+              // Migrer l'ancien emblème (clé = nom traduit) vers la nouvelle clé (.png)
+              if (emblem.image) {
+                migrateOldEmblems.run(emblemKey, campaignId, emblem.image, emblemKey)
+              }
 
               insertEmblem.run(
                 campaignId,
@@ -282,6 +261,11 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
           const emblem = emblems[j]!
           const emblemKey = emblem.Image || ''
           if (!emblemKey) continue
+
+          // Migrer l'ancien emblème (clé = nom traduit) vers la nouvelle clé (.png)
+          if (emblem.image) {
+            migrateOldEmblems.run(emblemKey, campaignId, emblem.image, emblemKey)
+          }
 
           insertEmblem.run(
             campaignId,
