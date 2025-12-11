@@ -214,7 +214,7 @@ const columns = computed<TableColumn<TableRow>[]>(() => {
   for (const user of filteredUsers.value) {
     cols.push({
       accessorKey: `user_${user.id}`,
-      header: () => h('div', { class: 'text-center' }, [
+      header: () => h('div', {}, [
         h('div', { class: 'font-medium' }, user.username),
         h('div', { class: 'text-xs text-muted font-normal' }, formatLastImport(user.lastImportAt))
       ]),
