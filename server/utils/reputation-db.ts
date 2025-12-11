@@ -141,7 +141,8 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
   const getFactionId = db.prepare(`SELECT id FROM factions WHERE key = ?`)
 
   const insertCampaign = db.prepare(`
-    INSERT OR IGNORE INTO campaigns (faction_id, key, name, sort_order) VALUES (?, ?, ?, ?)
+    INSERT INTO campaigns (faction_id, key, name, sort_order) VALUES (?, ?, ?, ?)
+    ON CONFLICT(faction_id, key) DO UPDATE SET sort_order = excluded.sort_order
   `)
 
   const getCampaignId = db.prepare(`
