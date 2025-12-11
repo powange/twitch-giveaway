@@ -74,6 +74,14 @@ const importForm = ref({
 })
 const isImporting = ref(false)
 
+// Charger les identifiants sauvegardés
+onMounted(() => {
+  const savedUsername = localStorage.getItem('reputation_username')
+  const savedPassword = localStorage.getItem('reputation_password')
+  if (savedUsername) importForm.value.username = savedUsername
+  if (savedPassword) importForm.value.password = savedPassword
+})
+
 // Faction sélectionnée
 const selectedFactionKey = ref<string>('')
 
@@ -369,6 +377,10 @@ async function submitImport() {
       }
     })
 
+    // Sauvegarder les identifiants pour la prochaine fois
+    localStorage.setItem('reputation_username', importForm.value.username)
+    localStorage.setItem('reputation_password', importForm.value.password)
+
     toast.add({
       title: 'Succes',
       description: (result as { message: string }).message,
@@ -376,7 +388,7 @@ async function submitImport() {
     })
 
     isImportModalOpen.value = false
-    importForm.value = { username: '', password: '', jsonText: '' }
+    importForm.value.jsonText = ''
     await refresh()
   } catch (error) {
     toast.add({
