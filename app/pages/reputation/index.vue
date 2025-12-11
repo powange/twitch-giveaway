@@ -433,6 +433,17 @@ async function submitImport() {
       <!-- Filtres -->
       <UCard class="mb-6">
         <div class="space-y-4">
+          <!-- Recherche dans les succès -->
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-muted">Recherche :</span>
+            <UInput
+              v-model="searchQuery"
+              placeholder="Rechercher un succes..."
+              icon="i-lucide-search"
+              class="max-w-xs"
+            />
+          </div>
+
           <!-- Sélection de faction -->
           <div class="flex items-center gap-3 flex-wrap">
             <span class="text-sm font-medium text-muted">Faction :</span>
@@ -512,17 +523,6 @@ async function submitImport() {
             >
               Completes
             </UButton>
-          </div>
-
-          <!-- Recherche dans les succès -->
-          <div class="flex items-center gap-3">
-            <span class="text-sm font-medium text-muted">Recherche :</span>
-            <UInput
-              v-model="searchQuery"
-              placeholder="Rechercher un succes..."
-              icon="i-lucide-search"
-              class="max-w-xs"
-            />
           </div>
         </div>
 
