@@ -392,21 +392,6 @@ async function submitImport() {
             </UButton>
           </div>
 
-          <!-- Sélection des utilisateurs -->
-          <div class="flex items-center gap-3 flex-wrap">
-            <span class="text-sm font-medium text-muted">Utilisateurs :</span>
-            <UButton
-              v-for="user in users"
-              :key="user.id"
-              :color="selectedUserIds.includes(user.id) ? 'success' : 'neutral'"
-              :variant="selectedUserIds.includes(user.id) ? 'solid' : 'outline'"
-              size="sm"
-              @click="toggleUser(user.id)"
-            >
-              {{ user.username }}
-            </UButton>
-          </div>
-
           <!-- Sélection des campagnes (si la faction en a plusieurs) -->
           <div
             v-if="hasMultipleCampaigns"
@@ -422,6 +407,21 @@ async function submitImport() {
               @click="toggleCampaign(campaign.id)"
             >
               {{ campaign.name }}
+            </UButton>
+          </div>
+
+          <!-- Sélection des utilisateurs -->
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-sm font-medium text-muted">Utilisateurs :</span>
+            <UButton
+              v-for="user in users"
+              :key="user.id"
+              :color="selectedUserIds.includes(user.id) ? 'success' : 'neutral'"
+              :variant="selectedUserIds.includes(user.id) ? 'solid' : 'outline'"
+              size="sm"
+              @click="toggleUser(user.id)"
+            >
+              {{ user.username }}
             </UButton>
           </div>
 

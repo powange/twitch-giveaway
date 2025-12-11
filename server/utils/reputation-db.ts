@@ -69,14 +69,7 @@ export function getReputationDb(): Database.Database {
   return db
 }
 
-// Liste des factions à ignorer (guildes avec UUID)
-const IGNORED_FACTIONS = [
-  '528a9537-e388-44ce-bbef-86a4722dac08',
-  'a2b050b1-a898-4e03-aa0d-fd0675bf0c62',
-  'ad87b82e-2fe0-423e-bdbf-a6b0aab6d8b8'
-]
-
-// Noms des factions en français
+// Noms des factions en français (seules ces factions seront importées)
 const FACTION_NAMES: Record<string, string> = {
   AthenasFortune: "Fortune d'Athéna",
   ReapersBones: 'Os de la faucheuse',
@@ -91,6 +84,9 @@ const FACTION_NAMES: Record<string, string> = {
   PirateLord: 'Gardiens de la Fortune',
   Flameheart: 'Serviteurs de la Flamme'
 }
+
+// Liste des factions valides (ignore tout le reste comme les guildes avec UUID)
+const VALID_FACTIONS = Object.keys(FACTION_NAMES)
 
 interface EmblemData {
   DisplayName?: string
@@ -159,8 +155,8 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
 
   const transaction = db.transaction(() => {
     for (const [factionKey, factionData] of Object.entries(jsonData)) {
-      // Ignorer les factions avec UUID
-      if (IGNORED_FACTIONS.includes(factionKey)) continue
+      // Ignorer les factions non reconnues (guildes avec UUID, etc.)
+      if (!VALID_FACTIONS.includes(factionKey)) continue
 
       const factionName = FACTION_NAMES[factionKey] || factionKey
       insertFaction.run(factionKey, factionName, factionData.Motto || '')
