@@ -184,12 +184,27 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
     UPDATE users SET last_import_at = CURRENT_TIMESTAMP WHERE id = ?
   `)
 
-  // Requête pour migrer les anciens emblèmes (clé = nom traduit) vers la nouvelle clé (.png)
-  // On garde les données existantes et on met à jour la clé
-  // On compare sur la fin de l'URL (le nom du fichier .png) car la version peut changer
-  const migrateOldEmblems = db.prepare(`
-    UPDATE emblems SET key = ?
-    WHERE campaign_id = ? AND image LIKE ? AND key != ?
+  // Requête pour trouver un ancien emblème (clé = nom traduit) avec la même image
+  const findOldEmblem = db.prepare(`
+    SELECT id FROM emblems
+    WHERE campaign_id = ? AND key != ? AND key NOT LIKE '%.png'
+    AND (image LIKE ? OR image = '')
+    LIMIT 1
+  `)
+
+  // Migrer les user_emblems de l'ancien vers le nouveau
+  const migrateUserEmblems = db.prepare(`
+    UPDATE OR IGNORE user_emblems SET emblem_id = ? WHERE emblem_id = ?
+  `)
+
+  // Supprimer les user_emblems orphelins
+  const deleteUserEmblems = db.prepare(`
+    DELETE FROM user_emblems WHERE emblem_id = ?
+  `)
+
+  // Supprimer l'ancien emblème
+  const deleteOldEmblem = db.prepare(`
+    DELETE FROM emblems WHERE id = ?
   `)
 
   const transaction = db.transaction(() => {
@@ -223,9 +238,7 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
               const emblemKey = emblem.Image || ''
               if (!emblemKey) continue
 
-              // Migrer l'ancien emblème (clé = nom traduit) vers la nouvelle clé (.png)
-              migrateOldEmblems.run(emblemKey, campaignId, '%' + emblemKey, emblemKey)
-
+              // Insérer le nouvel emblème
               insertEmblem.run(
                 campaignId,
                 emblemKey,
@@ -237,9 +250,20 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
               )
 
               const emblemRow = getEmblemId.get(campaignId, emblemKey) as { id: number }
+              const newEmblemId = emblemRow.id
+
+              // Chercher un ancien emblème doublon (clé = nom traduit)
+              const oldEmblem = findOldEmblem.get(campaignId, emblemKey, '%' + emblemKey) as { id: number } | undefined
+              if (oldEmblem) {
+                // Migrer les données utilisateur de l'ancien vers le nouveau
+                migrateUserEmblems.run(newEmblemId, oldEmblem.id)
+                deleteUserEmblems.run(oldEmblem.id)
+                deleteOldEmblem.run(oldEmblem.id)
+              }
+
               upsertUserEmblem.run(
                 userId,
-                emblemRow.id,
+                newEmblemId,
                 emblem.Value || 0,
                 emblem.Threshold || 0,
                 emblem.Grade || 0,
@@ -261,9 +285,7 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
           const emblemKey = emblem.Image || ''
           if (!emblemKey) continue
 
-          // Migrer l'ancien emblème (clé = nom traduit) vers la nouvelle clé (.png)
-          migrateOldEmblems.run(emblemKey, campaignId, '%' + emblemKey, emblemKey)
-
+          // Insérer le nouvel emblème
           insertEmblem.run(
             campaignId,
             emblemKey,
@@ -275,9 +297,20 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
           )
 
           const emblemRow = getEmblemId.get(campaignId, emblemKey) as { id: number }
+          const newEmblemId = emblemRow.id
+
+          // Chercher un ancien emblème doublon (clé = nom traduit)
+          const oldEmblem = findOldEmblem.get(campaignId, emblemKey, '%' + emblemKey) as { id: number } | undefined
+          if (oldEmblem) {
+            // Migrer les données utilisateur de l'ancien vers le nouveau
+            migrateUserEmblems.run(newEmblemId, oldEmblem.id)
+            deleteUserEmblems.run(oldEmblem.id)
+            deleteOldEmblem.run(oldEmblem.id)
+          }
+
           upsertUserEmblem.run(
             userId,
-            emblemRow.id,
+            newEmblemId,
             emblem.Value || 0,
             emblem.Threshold || 0,
             emblem.Grade || 0,
