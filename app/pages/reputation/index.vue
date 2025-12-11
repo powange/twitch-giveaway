@@ -82,17 +82,29 @@ const selectedUserIds = ref<number[]>([])
 // Campagnes sélectionnées pour l'affichage
 const selectedCampaignIds = ref<number[]>([])
 
+// Filtre de complétion des utilisateurs : 'all' | 'incomplete' | 'complete'
+const userCompletionFilter = ref<'all' | 'incomplete' | 'complete'>('all')
+
 // Initialiser la faction sélectionnée et les utilisateurs
-watch(reputationData, (data) => {
+watch(reputationData, (data, oldData) => {
   if (data?.factions && data.factions.length > 0 && !selectedFactionKey.value) {
     const firstFaction = data.factions[0]
     if (firstFaction) {
       selectedFactionKey.value = firstFaction.key
     }
   }
-  // Sélectionner tous les utilisateurs par défaut
-  if (data?.users && selectedUserIds.value.length === 0) {
-    selectedUserIds.value = data.users.map(u => u.id)
+  // Sélectionner tous les utilisateurs par défaut, ou ajouter les nouveaux
+  if (data?.users) {
+    if (selectedUserIds.value.length === 0) {
+      selectedUserIds.value = data.users.map(u => u.id)
+    } else {
+      // Ajouter les nouveaux utilisateurs qui ne sont pas encore sélectionnés
+      const existingIds = new Set(oldData?.users?.map(u => u.id) || [])
+      const newUsers = data.users.filter(u => !existingIds.has(u.id))
+      for (const user of newUsers) {
+        selectedUserIds.value.push(user.id)
+      }
+    }
   }
 }, { immediate: true })
 
@@ -118,6 +130,35 @@ const hasMultipleCampaigns = computed(() => {
 const filteredCampaigns = computed(() => {
   if (!selectedFaction.value?.campaigns) return []
   return selectedFaction.value.campaigns.filter(c => selectedCampaignIds.value.includes(c.id))
+})
+
+// Calculer si un utilisateur a tout complété dans les campagnes sélectionnées
+function hasUserCompletedAll(userId: number): boolean {
+  for (const campaign of filteredCampaigns.value) {
+    for (const emblem of campaign.emblems) {
+      const progress = emblem.userProgress[userId]
+      if (!progress?.completed) {
+        return false
+      }
+    }
+  }
+  return true
+}
+
+// Utilisateurs filtrés selon le filtre de complétion
+const filteredUsers = computed(() => {
+  if (userCompletionFilter.value === 'all') {
+    return selectedUsers.value
+  }
+
+  return selectedUsers.value.filter(user => {
+    const hasCompleted = hasUserCompletedAll(user.id)
+    if (userCompletionFilter.value === 'complete') {
+      return hasCompleted
+    } else {
+      return !hasCompleted
+    }
+  })
 })
 
 const users = computed(() => reputationData.value?.users || [])
@@ -155,8 +196,8 @@ const columns = computed<TableColumn<TableRow>[]>(() => {
     }
   ]
 
-  // Ajouter une colonne par utilisateur sélectionné
-  for (const user of selectedUsers.value) {
+  // Ajouter une colonne par utilisateur filtré
+  for (const user of filteredUsers.value) {
     cols.push({
       accessorKey: `user_${user.id}`,
       header: user.username,
@@ -190,7 +231,7 @@ function getTableData(emblems: Array<EmblemInfo & { userProgress: Record<number,
       image: emblem.image || ''
     }
 
-    for (const user of selectedUsers.value) {
+    for (const user of filteredUsers.value) {
       const progress = emblem.userProgress[user.id]
       if (progress) {
         row[`user_${user.id}_display`] = progress.threshold > 0
@@ -381,6 +422,35 @@ async function submitImport() {
               @click="toggleCampaign(campaign.id)"
             >
               {{ campaign.name }}
+            </UButton>
+          </div>
+
+          <!-- Filtre de complétion des utilisateurs -->
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-sm font-medium text-muted">Filtrer utilisateurs :</span>
+            <UButton
+              :color="userCompletionFilter === 'all' ? 'primary' : 'neutral'"
+              :variant="userCompletionFilter === 'all' ? 'solid' : 'outline'"
+              size="sm"
+              @click="userCompletionFilter = 'all'"
+            >
+              Tous
+            </UButton>
+            <UButton
+              :color="userCompletionFilter === 'incomplete' ? 'warning' : 'neutral'"
+              :variant="userCompletionFilter === 'incomplete' ? 'solid' : 'outline'"
+              size="sm"
+              @click="userCompletionFilter = 'incomplete'"
+            >
+              Non completes
+            </UButton>
+            <UButton
+              :color="userCompletionFilter === 'complete' ? 'success' : 'neutral'"
+              :variant="userCompletionFilter === 'complete' ? 'solid' : 'outline'"
+              size="sm"
+              @click="userCompletionFilter = 'complete'"
+            >
+              Completes
             </UButton>
           </div>
         </div>
