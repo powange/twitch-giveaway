@@ -82,18 +82,12 @@ const deleteForm = ref({
 })
 const isDeleting = ref(false)
 
-// Charger les identifiants sauvegardés
+// Charger les identifiants sauvegardés (uniquement pour l'import)
 onMounted(() => {
   const savedUsername = localStorage.getItem('reputation_username')
   const savedPassword = localStorage.getItem('reputation_password')
-  if (savedUsername) {
-    importForm.value.username = savedUsername
-    deleteForm.value.username = savedUsername
-  }
-  if (savedPassword) {
-    importForm.value.password = savedPassword
-    deleteForm.value.password = savedPassword
-  }
+  if (savedUsername) importForm.value.username = savedUsername
+  if (savedPassword) importForm.value.password = savedPassword
 })
 
 // Faction sélectionnée
