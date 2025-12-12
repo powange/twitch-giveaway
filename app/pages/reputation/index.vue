@@ -597,19 +597,55 @@ async function submitImport() {
 
       <!-- Tableau des succès - Toutes les factions -->
       <template v-else-if="allFactionsSelected">
-        <div
+        <template
           v-for="{ faction, campaigns } in allFactionsCampaigns"
           :key="faction.key"
-          class="mb-8"
         >
-          <h2 class="text-xl font-bold mb-4">
-            {{ faction.name }}
-          </h2>
-
+          <!-- N'afficher la faction que si au moins une campagne a des données -->
           <div
-            v-for="campaign in campaigns"
-            :key="campaign.id"
-            class="mb-6"
+            v-if="campaigns.some(c => filterEmblems(c.emblems).length > 0)"
+            class="mb-8"
+          >
+            <h2 class="text-xl font-bold mb-4">
+              {{ faction.name }}
+            </h2>
+
+            <template
+              v-for="campaign in campaigns"
+              :key="campaign.id"
+            >
+              <!-- N'afficher la campagne que si elle a des données -->
+              <div
+                v-if="filterEmblems(campaign.emblems).length > 0"
+                class="mb-6"
+              >
+                <h3
+                  v-if="campaign.key !== 'default'"
+                  class="text-lg font-semibold mb-4"
+                >
+                  {{ campaign.name }}
+                </h3>
+
+                <UTable
+                  :data="getTableData(campaign.emblems)"
+                  :columns="columns"
+                />
+              </div>
+            </template>
+          </div>
+        </template>
+      </template>
+
+      <!-- Tableau des succès - Une faction spécifique -->
+      <template v-else-if="selectedFaction">
+        <template
+          v-for="campaign in filteredCampaigns"
+          :key="campaign.id"
+        >
+          <!-- N'afficher la campagne que si elle a des données -->
+          <div
+            v-if="filterEmblems(campaign.emblems).length > 0"
+            class="mb-8"
           >
             <h3
               v-if="campaign.key !== 'default'"
@@ -623,28 +659,7 @@ async function submitImport() {
               :columns="columns"
             />
           </div>
-        </div>
-      </template>
-
-      <!-- Tableau des succès - Une faction spécifique -->
-      <template v-else-if="selectedFaction">
-        <div
-          v-for="campaign in filteredCampaigns"
-          :key="campaign.id"
-          class="mb-8"
-        >
-          <h3
-            v-if="campaign.key !== 'default'"
-            class="text-lg font-semibold mb-4"
-          >
-            {{ campaign.name }}
-          </h3>
-
-          <UTable
-            :data="getTableData(campaign.emblems)"
-            :columns="columns"
-          />
-        </div>
+        </template>
       </template>
     </template>
 
