@@ -100,14 +100,11 @@ const searchQuery = ref('')
 // Détecte si une recherche est active
 const isSearchActive = computed(() => searchQuery.value.trim().length > 0)
 
-// Initialiser la faction sélectionnée et les utilisateurs
+// Toutes les factions sélectionnées ?
+const allFactionsSelected = computed(() => selectedFactionKey.value === '')
+
+// Initialiser les utilisateurs (pas de faction par défaut = toutes)
 watch(reputationData, (data, oldData) => {
-  if (data?.factions && data.factions.length > 0 && !selectedFactionKey.value) {
-    const firstFaction = data.factions[0]
-    if (firstFaction) {
-      selectedFactionKey.value = firstFaction.key
-    }
-  }
   // Sélectionner tous les utilisateurs par défaut, ou ajouter les nouveaux
   if (data?.users) {
     if (selectedUserIds.value.length === 0) {
@@ -141,10 +138,19 @@ const hasMultipleCampaigns = computed(() => {
     (selectedFaction.value.campaigns.length === 1 && selectedFaction.value.campaigns[0].key !== 'default')
 })
 
-// Campagnes filtrées
+// Campagnes filtrées (pour une faction spécifique)
 const filteredCampaigns = computed(() => {
   if (!selectedFaction.value?.campaigns) return []
   return selectedFaction.value.campaigns.filter(c => selectedCampaignIds.value.includes(c.id))
+})
+
+// Toutes les factions avec leurs campagnes (pour l'affichage "Toutes")
+const allFactionsCampaigns = computed(() => {
+  if (!reputationData.value?.factions) return []
+  return reputationData.value.factions.map(faction => ({
+    faction,
+    campaigns: faction.campaigns.filter(c => c.key !== 'default' || faction.campaigns.length === 1)
+  }))
 })
 
 // Résultats de recherche globaux (toutes factions/campagnes)
@@ -471,6 +477,14 @@ async function submitImport() {
           <div v-if="!isSearchActive" class="flex items-center gap-3 flex-wrap">
             <span class="text-sm font-medium text-muted">Faction :</span>
             <UButton
+              :color="allFactionsSelected ? 'primary' : 'neutral'"
+              :variant="allFactionsSelected ? 'solid' : 'outline'"
+              size="sm"
+              @click="selectedFactionKey = ''"
+            >
+              Toutes
+            </UButton>
+            <UButton
               v-for="faction in reputationData?.factions"
               :key="faction.key"
               :color="selectedFactionKey === faction.key ? 'primary' : 'neutral'"
@@ -482,9 +496,9 @@ async function submitImport() {
             </UButton>
           </div>
 
-          <!-- Sélection des campagnes (masqué si recherche active) -->
+          <!-- Sélection des campagnes (masqué si recherche active ou toutes factions) -->
           <div
-            v-if="!isSearchActive && hasMultipleCampaigns"
+            v-if="!isSearchActive && !allFactionsSelected && hasMultipleCampaigns"
             class="flex items-center gap-3 flex-wrap"
           >
             <span class="text-sm font-medium text-muted">Campagnes :</span>
@@ -550,7 +564,7 @@ async function submitImport() {
         </div>
 
         <p
-          v-if="!isSearchActive && selectedFaction?.motto"
+          v-if="!isSearchActive && !allFactionsSelected && selectedFaction?.motto"
           class="text-sm text-muted mt-4 italic"
         >
           "{{ selectedFaction.motto }}"
@@ -581,7 +595,38 @@ async function submitImport() {
         </div>
       </template>
 
-      <!-- Tableau des succès (sans recherche) -->
+      <!-- Tableau des succès - Toutes les factions -->
+      <template v-else-if="allFactionsSelected">
+        <div
+          v-for="{ faction, campaigns } in allFactionsCampaigns"
+          :key="faction.key"
+          class="mb-8"
+        >
+          <h2 class="text-xl font-bold mb-4">
+            {{ faction.name }}
+          </h2>
+
+          <div
+            v-for="campaign in campaigns"
+            :key="campaign.id"
+            class="mb-6"
+          >
+            <h3
+              v-if="campaign.key !== 'default'"
+              class="text-lg font-semibold mb-4"
+            >
+              {{ campaign.name }}
+            </h3>
+
+            <UTable
+              :data="getTableData(campaign.emblems)"
+              :columns="columns"
+            />
+          </div>
+        </div>
+      </template>
+
+      <!-- Tableau des succès - Une faction spécifique -->
       <template v-else-if="selectedFaction">
         <div
           v-for="campaign in filteredCampaigns"
