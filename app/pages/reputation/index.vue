@@ -91,8 +91,8 @@ const selectedUserIds = ref<number[]>([])
 // Campagnes sélectionnées pour l'affichage
 const selectedCampaignIds = ref<number[]>([])
 
-// Filtre de complétion des utilisateurs : 'all' | 'incomplete' | 'complete'
-const userCompletionFilter = ref<'all' | 'incomplete' | 'complete'>('all')
+// Filtre de complétion des emblèmes : 'all' | 'incomplete' | 'complete'
+const emblemCompletionFilter = ref<'all' | 'incomplete' | 'complete'>('all')
 
 // Recherche dans les succès
 const searchQuery = ref('')
@@ -180,34 +180,32 @@ const searchResults = computed(() => {
   return results
 })
 
-// Calculer si un utilisateur a tout complété dans les campagnes sélectionnées
-function hasUserCompletedAll(userId: number): boolean {
-  for (const campaign of filteredCampaigns.value) {
-    for (const emblem of campaign.emblems) {
-      const progress = emblem.userProgress[userId]
-      if (!progress?.completed) {
-        return false
-      }
+// Vérifier si un emblème est complété par tous les utilisateurs sélectionnés
+function isEmblemCompletedByAll(emblem: { userProgress: Record<number, UserEmblemProgress> }): boolean {
+  for (const user of selectedUsers.value) {
+    const progress = emblem.userProgress[user.id]
+    if (!progress?.completed) {
+      return false
     }
   }
   return true
 }
 
-// Utilisateurs filtrés selon le filtre de complétion
-const filteredUsers = computed(() => {
-  if (userCompletionFilter.value === 'all') {
-    return selectedUsers.value
+// Filtrer les emblèmes selon le filtre de complétion
+function filterEmblems<T extends { userProgress: Record<number, UserEmblemProgress> }>(emblems: T[]): T[] {
+  if (emblemCompletionFilter.value === 'all') {
+    return emblems
   }
 
-  return selectedUsers.value.filter(user => {
-    const hasCompleted = hasUserCompletedAll(user.id)
-    if (userCompletionFilter.value === 'complete') {
-      return hasCompleted
+  return emblems.filter(emblem => {
+    const completedByAll = isEmblemCompletedByAll(emblem)
+    if (emblemCompletionFilter.value === 'complete') {
+      return completedByAll
     } else {
-      return !hasCompleted
+      return !completedByAll
     }
   })
-})
+}
 
 const users = computed(() => reputationData.value?.users || [])
 
@@ -257,8 +255,8 @@ const columns = computed<TableColumn<TableRow>[]>(() => {
     }
   ]
 
-  // Ajouter une colonne par utilisateur filtré
-  for (const user of filteredUsers.value) {
+  // Ajouter une colonne par utilisateur sélectionné
+  for (const user of selectedUsers.value) {
     cols.push({
       accessorKey: `user_${user.id}`,
       header: () => h('div', {}, [
@@ -285,9 +283,11 @@ const columns = computed<TableColumn<TableRow>[]>(() => {
   return cols
 })
 
-// Transformer les emblèmes en données de table
+// Transformer les emblèmes en données de table (avec filtrage par complétion)
 function getTableData(emblems: Array<EmblemInfo & { userProgress: Record<number, UserEmblemProgress> }>): TableRow[] {
-  return emblems.map(emblem => {
+  const filteredEmblems = filterEmblems(emblems)
+
+  return filteredEmblems.map(emblem => {
     const row: TableRow = {
       id: emblem.id,
       name: emblem.name,
@@ -295,7 +295,7 @@ function getTableData(emblems: Array<EmblemInfo & { userProgress: Record<number,
       image: emblem.image || ''
     }
 
-    for (const user of filteredUsers.value) {
+    for (const user of selectedUsers.value) {
       const progress = emblem.userProgress[user.id]
       if (progress) {
         row[`user_${user.id}_display`] = progress.threshold > 0
@@ -519,30 +519,30 @@ async function submitImport() {
             </UTooltip>
           </div>
 
-          <!-- Filtre de complétion des utilisateurs (masqué si recherche active) -->
+          <!-- Filtre de complétion des succès (masqué si recherche active) -->
           <div v-if="!isSearchActive" class="flex items-center gap-3 flex-wrap">
-            <span class="text-sm font-medium text-muted">Filtrer utilisateurs :</span>
+            <span class="text-sm font-medium text-muted">Filtrer succes :</span>
             <UButton
-              :color="userCompletionFilter === 'all' ? 'primary' : 'neutral'"
-              :variant="userCompletionFilter === 'all' ? 'solid' : 'outline'"
+              :color="emblemCompletionFilter === 'all' ? 'primary' : 'neutral'"
+              :variant="emblemCompletionFilter === 'all' ? 'solid' : 'outline'"
               size="sm"
-              @click="userCompletionFilter = 'all'"
+              @click="emblemCompletionFilter = 'all'"
             >
               Tous
             </UButton>
             <UButton
-              :color="userCompletionFilter === 'incomplete' ? 'warning' : 'neutral'"
-              :variant="userCompletionFilter === 'incomplete' ? 'solid' : 'outline'"
+              :color="emblemCompletionFilter === 'incomplete' ? 'warning' : 'neutral'"
+              :variant="emblemCompletionFilter === 'incomplete' ? 'solid' : 'outline'"
               size="sm"
-              @click="userCompletionFilter = 'incomplete'"
+              @click="emblemCompletionFilter = 'incomplete'"
             >
               Non completes
             </UButton>
             <UButton
-              :color="userCompletionFilter === 'complete' ? 'success' : 'neutral'"
-              :variant="userCompletionFilter === 'complete' ? 'solid' : 'outline'"
+              :color="emblemCompletionFilter === 'complete' ? 'success' : 'neutral'"
+              :variant="emblemCompletionFilter === 'complete' ? 'solid' : 'outline'"
               size="sm"
-              @click="userCompletionFilter = 'complete'"
+              @click="emblemCompletionFilter = 'complete'"
             >
               Completes
             </UButton>
