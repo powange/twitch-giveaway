@@ -390,10 +390,12 @@ async function submitImport() {
     isImportModalOpen.value = false
     importForm.value.jsonText = ''
     await refresh()
-  } catch (error) {
+  } catch (error: unknown) {
+    const err = error as { data?: { message?: string }, message?: string }
+    const message = err.data?.message || err.message || 'Erreur lors de l\'import'
     toast.add({
       title: 'Erreur',
-      description: (error as { data?: { message?: string } }).data?.message || 'Erreur lors de l\'import',
+      description: message,
       color: 'error'
     })
   } finally {

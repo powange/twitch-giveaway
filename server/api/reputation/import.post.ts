@@ -52,9 +52,12 @@ export default defineEventHandler(async (event) => {
   try {
     importReputationData(userId, jsonData)
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue'
+    // Erreur de validation (langue) = 400, autres erreurs = 500
+    const isValidationError = message.includes('français') || message.includes('francais')
     throw createError({
-      statusCode: 500,
-      message: `Erreur lors de l'import: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
+      statusCode: isValidationError ? 400 : 500,
+      message
     })
   }
 
