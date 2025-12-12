@@ -613,22 +613,22 @@ async function submitImport() {
 
           <div class="space-y-4">
             <UAlert
-              icon="i-lucide-info"
-              color="info"
-              title="Besoin d'aide ?"
+              icon="i-lucide-alert-triangle"
+              color="warning"
+              title="Important : JSON en francais uniquement"
             >
               <template #description>
                 <p class="text-sm mb-2">
-                  Consultez notre tutoriel detaille pour apprendre a recuperer vos donnees.
+                  Le site Sea of Thieves doit etre en francais pour recuperer vos donnees.
+                  <UButton
+                    to="/reputation/tutoriel"
+                    size="xs"
+                    variant="link"
+                    label="Voir le tutoriel"
+                    class="p-0"
+                    @click="isImportModalOpen = false"
+                  />
                 </p>
-                <UButton
-                  to="/reputation/tutoriel"
-                  size="xs"
-                  variant="outline"
-                  icon="i-lucide-book-open"
-                  label="Voir le tutoriel"
-                  @click="isImportModalOpen = false"
-                />
               </template>
             </UAlert>
 

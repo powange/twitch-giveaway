@@ -140,7 +140,28 @@ interface FactionData {
 
 type ReputationJson = Record<string, FactionData>
 
+// Mots-clés français pour vérifier la langue du JSON
+const FRENCH_KEYWORDS = [
+  'Les mers nous appartiennent', // Motto AthenasFortune
+  'Nous voyons tout', // Motto OrderOfSouls
+  'Le commerce avant tout' // Motto MerchantAlliance
+]
+
+export function validateJsonLanguage(jsonData: ReputationJson): boolean {
+  // Vérifier si au moins un motto français est présent
+  for (const factionData of Object.values(jsonData)) {
+    if (factionData.Motto && FRENCH_KEYWORDS.includes(factionData.Motto)) {
+      return true
+    }
+  }
+  return false
+}
+
 export function importReputationData(userId: number, jsonData: ReputationJson): void {
+  // Vérifier que le JSON est en français
+  if (!validateJsonLanguage(jsonData)) {
+    throw new Error('Le JSON doit être en français. Changez la langue du site Sea of Thieves en français avant de récupérer vos données.')
+  }
   const db = getReputationDb()
 
   const insertFaction = db.prepare(`
@@ -184,29 +205,6 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
     UPDATE users SET last_import_at = CURRENT_TIMESTAMP WHERE id = ?
   `)
 
-  // Requête pour trouver un ancien emblème (clé = nom traduit) avec la même image
-  const findOldEmblem = db.prepare(`
-    SELECT id FROM emblems
-    WHERE campaign_id = ? AND key != ? AND key NOT LIKE '%.png'
-    AND (image LIKE ? OR image = '')
-    LIMIT 1
-  `)
-
-  // Migrer les user_emblems de l'ancien vers le nouveau
-  const migrateUserEmblems = db.prepare(`
-    UPDATE OR IGNORE user_emblems SET emblem_id = ? WHERE emblem_id = ?
-  `)
-
-  // Supprimer les user_emblems orphelins
-  const deleteUserEmblems = db.prepare(`
-    DELETE FROM user_emblems WHERE emblem_id = ?
-  `)
-
-  // Supprimer l'ancien emblème
-  const deleteOldEmblem = db.prepare(`
-    DELETE FROM emblems WHERE id = ?
-  `)
-
   const transaction = db.transaction(() => {
     // Mettre à jour la date du dernier import
     updateLastImport.run(userId)
@@ -235,14 +233,13 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
           if (campaignData.Emblems) {
             for (let j = 0; j < campaignData.Emblems.length; j++) {
               const emblem = campaignData.Emblems[j]!
-              const emblemKey = emblem.Image || ''
+              const emblemKey = emblem['#Name'] || emblem.DisplayName || ''
               if (!emblemKey) continue
 
-              // Insérer le nouvel emblème
               insertEmblem.run(
                 campaignId,
                 emblemKey,
-                emblem.DisplayName || emblem['#Name'] || emblemKey,
+                emblem.DisplayName || emblemKey,
                 emblem.Description || '',
                 emblem.image || '',
                 emblem.MaxGrade || 5,
@@ -250,20 +247,9 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
               )
 
               const emblemRow = getEmblemId.get(campaignId, emblemKey) as { id: number }
-              const newEmblemId = emblemRow.id
-
-              // Chercher un ancien emblème doublon (clé = nom traduit)
-              const oldEmblem = findOldEmblem.get(campaignId, emblemKey, '%' + emblemKey) as { id: number } | undefined
-              if (oldEmblem) {
-                // Migrer les données utilisateur de l'ancien vers le nouveau
-                migrateUserEmblems.run(newEmblemId, oldEmblem.id)
-                deleteUserEmblems.run(oldEmblem.id)
-                deleteOldEmblem.run(oldEmblem.id)
-              }
-
               upsertUserEmblem.run(
                 userId,
-                newEmblemId,
+                emblemRow.id,
                 emblem.Value || 0,
                 emblem.Threshold || 0,
                 emblem.Grade || 0,
@@ -282,14 +268,13 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
         const emblems = factionData.Emblems?.Emblems || []
         for (let j = 0; j < emblems.length; j++) {
           const emblem = emblems[j]!
-          const emblemKey = emblem.Image || ''
+          const emblemKey = emblem['#Name'] || emblem.DisplayName || ''
           if (!emblemKey) continue
 
-          // Insérer le nouvel emblème
           insertEmblem.run(
             campaignId,
             emblemKey,
-            emblem.DisplayName || emblem['#Name'] || emblemKey,
+            emblem.DisplayName || emblemKey,
             emblem.Description || '',
             emblem.image || '',
             emblem.MaxGrade || 5,
@@ -297,20 +282,9 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
           )
 
           const emblemRow = getEmblemId.get(campaignId, emblemKey) as { id: number }
-          const newEmblemId = emblemRow.id
-
-          // Chercher un ancien emblème doublon (clé = nom traduit)
-          const oldEmblem = findOldEmblem.get(campaignId, emblemKey, '%' + emblemKey) as { id: number } | undefined
-          if (oldEmblem) {
-            // Migrer les données utilisateur de l'ancien vers le nouveau
-            migrateUserEmblems.run(newEmblemId, oldEmblem.id)
-            deleteUserEmblems.run(oldEmblem.id)
-            deleteOldEmblem.run(oldEmblem.id)
-          }
-
           upsertUserEmblem.run(
             userId,
-            newEmblemId,
+            emblemRow.id,
             emblem.Value || 0,
             emblem.Threshold || 0,
             emblem.Grade || 0,

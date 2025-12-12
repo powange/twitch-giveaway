@@ -6,10 +6,14 @@ useSeoMeta({
 
 const steps = [
   {
-    title: 'Se connecter sur le site officiel',
-    description: 'Rendez-vous sur le site Sea of Thieves et connectez-vous avec votre compte Microsoft/Xbox.',
+    title: 'Mettre le site en francais',
+    description: 'Rendez-vous sur le site Sea of Thieves. En bas de page, cliquez sur le selecteur de langue et choisissez "Francais". C\'est obligatoire pour que l\'import fonctionne.',
     link: 'https://www.seaofthieves.com/profile/reputation',
     linkLabel: 'Ouvrir Sea of Thieves'
+  },
+  {
+    title: 'Se connecter',
+    description: 'Connectez-vous avec votre compte Microsoft/Xbox si ce n\'est pas deja fait.'
   },
   {
     title: 'Ouvrir les outils developpeur',
@@ -152,7 +156,28 @@ function prevStep() {
 
       <!-- Images/GIFs selon l'etape -->
       <div
-        v-if="currentStep === 1"
+        v-if="currentStep === 0"
+        class="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg"
+      >
+        <p class="text-sm text-muted mb-2">
+          Le selecteur de langue se trouve en bas de page :
+        </p>
+        <div class="flex items-center gap-2">
+          <UIcon
+            name="i-lucide-globe"
+            class="w-4 h-4"
+          />
+          <span class="text-sm">English</span>
+          <UIcon
+            name="i-lucide-chevron-right"
+            class="w-4 h-4"
+          />
+          <span class="text-sm font-medium text-primary">Francais</span>
+        </div>
+      </div>
+
+      <div
+        v-if="currentStep === 2"
         class="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg"
       >
         <p class="text-sm text-muted mb-2">
@@ -180,7 +205,7 @@ function prevStep() {
       </div>
 
       <div
-        v-if="currentStep === 2"
+        v-if="currentStep === 3"
         class="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg"
       >
         <p class="text-sm text-muted mb-2">
@@ -195,7 +220,7 @@ function prevStep() {
       </div>
 
       <div
-        v-if="currentStep === 4"
+        v-if="currentStep === 5"
         class="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg"
       >
         <p class="text-sm text-muted mb-2">
@@ -214,7 +239,7 @@ function prevStep() {
       </div>
 
       <div
-        v-if="currentStep === 5"
+        v-if="currentStep === 6"
         class="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg"
       >
         <p class="text-sm text-muted mb-2">
@@ -274,6 +299,8 @@ function prevStep() {
             class="text-primary hover:underline"
           >seaofthieves.com/profile/reputation</a>
         </li>
+        <li><strong class="text-warning">Mettez le site en francais</strong> (selecteur en bas de page)</li>
+        <li>Connectez-vous avec votre compte Microsoft/Xbox</li>
         <li>Ouvrez les DevTools (<kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">F12</kbd>)</li>
         <li>Onglet <strong>Network</strong></li>
         <li>Rafraichissez la page (<kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">F5</kbd>)</li>
