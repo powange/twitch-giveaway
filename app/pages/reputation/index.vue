@@ -39,6 +39,7 @@ interface CampaignWithEmblems {
   id: number
   key: string
   name: string
+  description: string
   factionId: number
   emblems: Array<EmblemInfo & { userProgress: Record<number, UserEmblemProgress> }>
 }
@@ -470,7 +471,7 @@ async function submitDelete() {
   <UContainer class="py-8">
     <div class="flex justify-between items-center mb-8">
       <div>
-        <h1 class="text-3xl font-bold">
+        <h1 class="text-4xl font-pirate">
           Reputations Sea of Thieves
         </h1>
         <p class="text-muted mt-1">
@@ -491,7 +492,7 @@ async function submitDelete() {
         />
         <UButton
           icon="i-lucide-trash-2"
-          label="Supprimer mon compte"
+          label="Supprimer mes donnees"
           color="error"
           variant="outline"
           @click="isDeleteModalOpen = true"
@@ -626,12 +627,6 @@ async function submitDelete() {
           </div>
         </div>
 
-        <p
-          v-if="!isSearchActive && !allFactionsSelected && selectedFaction?.motto"
-          class="text-sm text-muted mt-4 italic"
-        >
-          "{{ selectedFaction.motto }}"
-        </p>
       </UCard>
 
       <!-- Résultats de recherche globaux -->
@@ -669,9 +664,15 @@ async function submitDelete() {
             v-if="campaigns.some(c => filterEmblems(c.emblems).length > 0)"
             class="mb-8"
           >
-            <h2 class="text-xl font-bold mb-4">
+            <h2 class="text-2xl font-pirate">
               {{ faction.name }}
             </h2>
+            <p
+              v-if="faction.motto"
+              class="text-muted italic mb-4"
+            >
+              « {{ faction.motto }} »
+            </p>
 
             <template
               v-for="campaign in campaigns"
@@ -682,12 +683,17 @@ async function submitDelete() {
                 v-if="filterEmblems(campaign.emblems).length > 0"
                 class="mb-6"
               >
-                <h3
-                  v-if="campaign.key !== 'default'"
-                  class="text-lg font-semibold mb-4"
-                >
-                  {{ campaign.name }}
-                </h3>
+                <div v-if="campaign.key !== 'default'" class="mb-4">
+                  <h3 class="text-lg font-semibold">
+                    {{ campaign.name }}
+                  </h3>
+                  <p
+                    v-if="campaign.description"
+                    class="text-sm text-muted italic"
+                  >
+                    {{ campaign.description }}
+                  </p>
+                </div>
 
                 <UTable
                   :data="getTableData(campaign.emblems)"
@@ -701,6 +707,18 @@ async function submitDelete() {
 
       <!-- Tableau des succès - Une faction spécifique -->
       <template v-else-if="selectedFaction">
+        <div class="mb-6">
+          <h2 class="text-2xl font-pirate">
+            {{ selectedFaction.name }}
+          </h2>
+          <p
+            v-if="selectedFaction.motto"
+            class="text-muted italic"
+          >
+            « {{ selectedFaction.motto }} »
+          </p>
+        </div>
+
         <template
           v-for="campaign in filteredCampaigns"
           :key="campaign.id"
@@ -710,12 +728,17 @@ async function submitDelete() {
             v-if="filterEmblems(campaign.emblems).length > 0"
             class="mb-8"
           >
-            <h3
-              v-if="campaign.key !== 'default'"
-              class="text-lg font-semibold mb-4"
-            >
-              {{ campaign.name }}
-            </h3>
+            <div v-if="campaign.key !== 'default'" class="mb-4">
+              <h3 class="text-lg font-semibold">
+                {{ campaign.name }}
+              </h3>
+              <p
+                v-if="campaign.description"
+                class="text-sm text-muted italic"
+              >
+                {{ campaign.description }}
+              </p>
+            </div>
 
             <UTable
               :data="getTableData(campaign.emblems)"

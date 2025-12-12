@@ -67,7 +67,7 @@ function prevStep() {
         label="Retour"
         class="mb-4"
       />
-      <h1 class="text-3xl font-bold">
+      <h1 class="text-4xl font-pirate">
         Comment recuperer ses donnees de reputation
       </h1>
       <p class="text-muted mt-2">

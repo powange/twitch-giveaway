@@ -2,8 +2,16 @@
 export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
-    '@nuxt/ui'
+    '@nuxt/ui',
+    '@nuxt/fonts'
   ],
+
+  fonts: {
+    families: [
+      { name: 'DM Sans', provider: 'google' },
+      { name: 'Pirata One', provider: 'google' }
+    ]
+  },
 
   devtools: {
     enabled: true

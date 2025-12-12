@@ -90,6 +90,13 @@ export function getReputationDb(): Database.Database {
     db.exec('ALTER TABLE emblems ADD COLUMN sort_order INTEGER DEFAULT 0')
   }
 
+  // Migration: ajouter description aux campagnes si la colonne n'existe pas
+  const campaignColumnsForDesc = db.prepare("PRAGMA table_info(campaigns)").all() as Array<{ name: string }>
+  const hasCampaignDesc = campaignColumnsForDesc.some(col => col.name === 'description')
+  if (!hasCampaignDesc) {
+    db.exec('ALTER TABLE campaigns ADD COLUMN description TEXT')
+  }
+
   return db
 }
 
@@ -127,6 +134,7 @@ interface EmblemData {
 
 interface CampaignData {
   Title?: string
+  Desc?: string
   Emblems?: EmblemData[]
 }
 
@@ -171,8 +179,10 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
   const getFactionId = db.prepare(`SELECT id FROM factions WHERE key = ?`)
 
   const insertCampaign = db.prepare(`
-    INSERT INTO campaigns (faction_id, key, name, sort_order) VALUES (?, ?, ?, ?)
-    ON CONFLICT(faction_id, key) DO UPDATE SET sort_order = excluded.sort_order
+    INSERT INTO campaigns (faction_id, key, name, description, sort_order) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(faction_id, key) DO UPDATE SET
+      description = COALESCE(excluded.description, campaigns.description),
+      sort_order = excluded.sort_order
   `)
 
   const getCampaignId = db.prepare(`
@@ -225,7 +235,8 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
         for (let i = 0; i < campaignEntries.length; i++) {
           const [campaignKey, campaignData] = campaignEntries[i]!
           const campaignName = campaignData.Title || campaignKey
-          insertCampaign.run(factionId, campaignKey, campaignName, i)
+          const campaignDesc = campaignData.Desc || ''
+          insertCampaign.run(factionId, campaignKey, campaignName, campaignDesc, i)
 
           const campaignRow = getCampaignId.get(factionId, campaignKey) as { id: number }
           const campaignId = campaignRow.id
@@ -260,7 +271,7 @@ export function importReputationData(userId: number, jsonData: ReputationJson): 
         }
       } else {
         // Factions standard avec Emblems.Emblems
-        insertCampaign.run(factionId, 'default', factionName, 0)
+        insertCampaign.run(factionId, 'default', factionName, '', 0)
 
         const campaignRow = getCampaignId.get(factionId, 'default') as { id: number }
         const campaignId = campaignRow.id
@@ -315,6 +326,7 @@ export interface CampaignInfo {
   id: number
   key: string
   name: string
+  description: string
   factionId: number
 }
 
@@ -352,7 +364,7 @@ export function getAllFactions(): FactionInfo[] {
 export function getCampaignsByFaction(factionId: number): CampaignInfo[] {
   const db = getReputationDb()
   return db.prepare(`
-    SELECT id, key, name, faction_id as factionId
+    SELECT id, key, name, description, faction_id as factionId
     FROM campaigns
     WHERE faction_id = ?
     ORDER BY sort_order, id
