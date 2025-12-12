@@ -74,12 +74,26 @@ const importForm = ref({
 })
 const isImporting = ref(false)
 
+// État du formulaire de suppression
+const isDeleteModalOpen = ref(false)
+const deleteForm = ref({
+  username: '',
+  password: ''
+})
+const isDeleting = ref(false)
+
 // Charger les identifiants sauvegardés
 onMounted(() => {
   const savedUsername = localStorage.getItem('reputation_username')
   const savedPassword = localStorage.getItem('reputation_password')
-  if (savedUsername) importForm.value.username = savedUsername
-  if (savedPassword) importForm.value.password = savedPassword
+  if (savedUsername) {
+    importForm.value.username = savedUsername
+    deleteForm.value.username = savedUsername
+  }
+  if (savedPassword) {
+    importForm.value.password = savedPassword
+    deleteForm.value.password = savedPassword
+  }
 })
 
 // Faction sélectionnée
@@ -408,6 +422,54 @@ async function submitImport() {
     isImporting.value = false
   }
 }
+
+async function submitDelete() {
+  if (!deleteForm.value.username || !deleteForm.value.password) {
+    toast.add({
+      title: 'Erreur',
+      description: 'Pseudo et mot de passe sont requis',
+      color: 'error'
+    })
+    return
+  }
+
+  isDeleting.value = true
+
+  try {
+    const result = await $fetch('/api/reputation/delete', {
+      method: 'POST',
+      body: {
+        username: deleteForm.value.username,
+        password: deleteForm.value.password
+      }
+    })
+
+    // Supprimer les identifiants sauvegardés
+    localStorage.removeItem('reputation_username')
+    localStorage.removeItem('reputation_password')
+
+    toast.add({
+      title: 'Succes',
+      description: (result as { message: string }).message,
+      color: 'success'
+    })
+
+    isDeleteModalOpen.value = false
+    deleteForm.value = { username: '', password: '' }
+    importForm.value = { username: '', password: '', jsonText: '' }
+    await refresh()
+  } catch (error: unknown) {
+    const err = error as { data?: { message?: string }, message?: string }
+    const message = err.data?.message || err.message || 'Erreur lors de la suppression'
+    toast.add({
+      title: 'Erreur',
+      description: message,
+      color: 'error'
+    })
+  } finally {
+    isDeleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -432,6 +494,13 @@ async function submitImport() {
           icon="i-lucide-upload"
           label="Importer mes donnees"
           @click="isImportModalOpen = true"
+        />
+        <UButton
+          icon="i-lucide-trash-2"
+          label="Supprimer mon compte"
+          color="error"
+          variant="outline"
+          @click="isDeleteModalOpen = true"
         />
       </div>
     </div>
@@ -734,6 +803,68 @@ async function submitImport() {
                 icon="i-lucide-upload"
                 :loading="isImporting"
                 @click="submitImport"
+              />
+            </div>
+          </template>
+        </UCard>
+      </template>
+    </UModal>
+
+    <!-- Modal de suppression -->
+    <UModal v-model:open="isDeleteModalOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <h2 class="text-xl font-semibold text-error">
+              Supprimer mon compte
+            </h2>
+          </template>
+
+          <div class="space-y-4">
+            <UAlert
+              icon="i-lucide-alert-triangle"
+              color="error"
+              title="Attention : action irreversible"
+            >
+              <template #description>
+                <p class="text-sm">
+                  Cette action supprimera definitivement votre compte et toutes vos donnees de progression.
+                </p>
+              </template>
+            </UAlert>
+
+            <UFormField label="Pseudo" class="w-full">
+              <UInput
+                v-model="deleteForm.username"
+                placeholder="Votre pseudo de pirate"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField label="Mot de passe" class="w-full">
+              <UInput
+                v-model="deleteForm.password"
+                type="password"
+                placeholder="Votre mot de passe"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
+
+          <template #footer>
+            <div class="flex justify-end gap-2">
+              <UButton
+                label="Annuler"
+                color="neutral"
+                variant="outline"
+                @click="isDeleteModalOpen = false"
+              />
+              <UButton
+                label="Supprimer"
+                icon="i-lucide-trash-2"
+                color="error"
+                :loading="isDeleting"
+                @click="submitDelete"
               />
             </div>
           </template>
