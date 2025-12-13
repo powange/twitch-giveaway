@@ -25,6 +25,4 @@ logs
 
 # Database
 data/db.json
-data/reputation.db
 .history/
-reputation.json
