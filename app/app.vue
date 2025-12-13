@@ -24,8 +24,7 @@ useSeoMeta({
 const navItems = [
   { label: 'Giveaways', to: '/', icon: 'i-lucide-gift' },
   { label: 'Cadeaux', to: '/cadeaux', icon: 'i-lucide-package' },
-  { label: 'Streams', to: '/streams', icon: 'i-lucide-tv' },
-  { label: 'Reputation', to: '/reputation', icon: 'i-lucide-anchor' }
+  { label: 'Streams', to: '/streams', icon: 'i-lucide-tv' }
 ]
 </script>
 
