@@ -118,44 +118,43 @@ onUnmounted(() => {
     </div>
 
     <!-- Stream principal Sea of Thieves -->
-    <UCard class="mb-6">
-      <template #header>
-        <div class="flex items-center justify-between">
+    <div class="mb-6 flex flex-col lg:flex-row gap-3">
+      <!-- Player principal -->
+      <div class="rounded-lg border-2 border-primary bg-white dark:bg-gray-900 overflow-hidden lg:w-1/2 xl:w-2/5">
+        <!-- Header compact -->
+        <div class="flex justify-between items-center px-3 py-2 border-b border-gray-200 dark:border-gray-800">
           <div class="flex items-center gap-2">
-            <UIcon name="i-simple-icons-twitch" class="w-5 h-5 text-purple-500" />
-            <span class="font-semibold">Sea of Thieves</span>
-            <UBadge color="primary" variant="soft">Principal</UBadge>
+            <UIcon name="i-simple-icons-twitch" class="w-4 h-4 text-purple-500" />
+            <span class="font-medium text-sm">Sea of Thieves</span>
+            <UBadge color="primary" variant="soft" size="xs">Principal</UBadge>
           </div>
           <a
             href="https://www.twitch.tv/seaofthieves"
             target="_blank"
-            class="text-sm text-muted hover:text-foreground"
+            class="text-xs text-muted hover:text-foreground"
           >
-            Ouvrir sur Twitch
-            <UIcon name="i-lucide-external-link" class="w-3 h-3 inline ml-1" />
+            <UIcon name="i-lucide-external-link" class="w-3 h-3" />
           </a>
         </div>
-      </template>
 
-      <div class="flex flex-col lg:flex-row gap-4">
         <!-- Player -->
-        <div class="flex-1 aspect-video bg-black rounded-lg overflow-hidden">
-          <div id="player-main" class="w-full h-full" />
-        </div>
-
-        <!-- Chat -->
-        <div
-          v-if="showChat && parentDomain"
-          class="w-full lg:w-96 h-[400px] lg:h-auto shrink-0"
-        >
-          <iframe
-            :src="`https://www.twitch.tv/embed/${mainChannel}/chat?parent=${parentDomain}&darkpopout`"
-            class="w-full h-full rounded-lg"
-            frameborder="0"
-          />
+        <div class="aspect-video bg-black">
+          <div id="player-main" class="w-full h-full min-h-[200px]" />
         </div>
       </div>
-    </UCard>
+
+      <!-- Chat -->
+      <div
+        v-if="showChat && parentDomain"
+        class="rounded-lg border-2 border-gray-200 dark:border-gray-800 overflow-hidden lg:w-1/2 xl:w-2/5 h-[350px] lg:h-auto"
+      >
+        <iframe
+          :src="`https://www.twitch.tv/embed/${mainChannel}/chat?parent=${parentDomain}&darkpopout`"
+          class="w-full h-full"
+          frameborder="0"
+        />
+      </div>
+    </div>
 
     <!-- Streams temporaires -->
     <div v-if="streamsWithTimeLeft.length > 0">
