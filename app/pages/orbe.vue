@@ -247,12 +247,24 @@ onUnmounted(() => {
       <!-- Chat -->
       <div
         v-if="showChat && parentDomain"
-        class="rounded-lg border-2 border-gray-200 dark:border-gray-800 overflow-hidden lg:w-1/2 xl:w-2/5 h-[350px] lg:h-auto"
+        class="rounded-lg border-2 border-gray-200 dark:border-gray-800 overflow-hidden lg:w-1/2 xl:w-2/5 h-[350px] lg:h-auto flex flex-col"
       >
+        <!-- Header chat avec bouton reload -->
+        <div class="flex items-center justify-between px-3 py-1 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+          <span class="text-xs text-muted">Chat</span>
+          <UButton
+            icon="i-lucide-refresh-cw"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            title="Recharger le chat"
+            @click="chatKey++"
+          />
+        </div>
         <iframe
           :key="chatKey"
           :src="`https://www.twitch.tv/embed/${mainChannel}/chat?parent=${parentDomain}&darkpopout`"
-          class="w-full h-full"
+          class="w-full flex-1"
           frameborder="0"
         />
       </div>

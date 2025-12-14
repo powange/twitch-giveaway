@@ -169,6 +169,14 @@ export function useOrbeTwitchLinks(callbacks?: OrbeTwitchLinksCallbacks) {
           continue
         }
 
+        // Détecter quand le stream fait un raid (message système)
+        // Format: "username is now raiding channelname" ou messages similaires
+        if (line.toLowerCase().includes('is now raiding') || line.toLowerCase().includes('raid to')) {
+          console.log('[OrbeTwitchLinks] Outgoing raid detected:', line.substring(0, 200))
+          callbacks?.onRaidDetected?.('outgoing')
+          continue
+        }
+
         // Parser les messages normaux
         const parsed = parseIRCMessage(line)
         if (parsed) {
