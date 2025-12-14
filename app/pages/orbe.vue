@@ -5,6 +5,17 @@ const { createPlayer, destroyPlayer, toggleMuteAll, globalMuted } = useTwitchPla
 
 const showChat = ref(true)
 const parentDomain = ref('')
+const scheduleModalOpen = ref(false)
+
+// Calendrier des raids
+const raidSchedule = [
+  { raid: 21, time: '02:30 - 03:29 UTC', drops: ['Twilight Hunter Sails', 'Gilded Phoenix Eyepatch', 'EWS Banjo', 'Gilded Phoenix Trousers'] },
+  { raid: 22, time: '04:30 - 05:29 UTC', drops: ['Twilight Hunter Wheel', 'Eastern Winds Sapphire Trumpet', 'EWS Sapphire Shovel', 'EWS Pocket Watch'] },
+  { raid: 23, time: '06:30 - 07:29 UTC', drops: ['Gilded Phoenix Hook', 'Twilight Hunter Figurehead', 'Gilded Phoenix Jacket', 'Twilight Hunter Flag'] },
+  { raid: 24, time: '09:30 - 10:29 UTC', drops: ['EWS Spyglass', 'Twilight Hunter Cannons', 'EWS Lantern', 'Gilded Phoenix Gloves'] },
+  { raid: 25, time: '11:30 - 12:29 UTC', drops: ['EWS Hurdy Gurdy', 'EWS Fishing Rod', 'Gilded Phoenix Boots', 'Twilight Hunter Capstan'] },
+  { raid: 26, time: '13:30 - 14:29 UTC', drops: ['EWS Drum', 'Gilded Phoenix Dress', 'EWS Concertina', 'EWS Compass'] }
+]
 
 // Streams temporaires détectés
 const { isConnected, temporaryStreams, mainChannel, removeStream } = useOrbeTwitchLinks({
@@ -107,6 +118,13 @@ onUnmounted(() => {
             Drops Inventory
             <UIcon name="i-lucide-external-link" class="w-3 h-3" />
           </a>
+          <button
+            class="text-sm text-primary hover:underline flex items-center gap-1"
+            @click="scheduleModalOpen = true"
+          >
+            <UIcon name="i-lucide-calendar" class="w-3 h-3" />
+            Calendrier des raids
+          </button>
         </div>
       </div>
 
@@ -230,5 +248,55 @@ onUnmounted(() => {
       <p>En attente de liens Twitch dans le chat de Sea of Thieves...</p>
       <p class="text-sm mt-2">Les streams partenaires apparaîtront automatiquement ici pendant 1h.</p>
     </div>
+
+    <!-- Modal calendrier des raids -->
+    <UModal v-model:open="scheduleModalOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold flex items-center gap-2">
+                <UIcon name="i-lucide-calendar" class="w-5 h-5" />
+                Calendrier des raids
+              </h2>
+              <UButton
+                icon="i-lucide-x"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="scheduleModalOpen = false"
+              />
+            </div>
+          </template>
+
+          <div class="space-y-3 max-h-[60vh] overflow-y-auto">
+            <div
+              v-for="raid in raidSchedule"
+              :key="raid.raid"
+              class="p-3 rounded-lg border border-gray-200 dark:border-gray-800"
+            >
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-semibold">Raid {{ raid.raid }}</span>
+                <UBadge color="info" variant="soft" size="xs">
+                  <UIcon name="i-lucide-clock" class="w-3 h-3 mr-1" />
+                  {{ raid.time }}
+                </UBadge>
+              </div>
+              <div class="flex flex-wrap gap-1">
+                <UBadge
+                  v-for="drop in raid.drops"
+                  :key="drop"
+                  color="neutral"
+                  variant="soft"
+                  size="xs"
+                >
+                  {{ drop }}
+                </UBadge>
+              </div>
+            </div>
+          </div>
+        </UCard>
+      </template>
+    </UModal>
   </UContainer>
 </template>
