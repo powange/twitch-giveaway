@@ -78,23 +78,24 @@ export function useOrbeTwitchLinks(callbacks?: OrbeTwitchLinksCallbacks) {
     return matches
   }
 
+  const EXTEND_DURATION = 5 * 60 * 1000 // 5 minutes en ms
+
   // Ajouter ou prolonger un stream
   function addOrExtendStream(channel: string) {
     const now = Date.now()
-    const expiresAt = now + STREAM_DURATION
 
     const existing = temporaryStreams.value.find(s => s.channel === channel)
 
     if (existing) {
-      // Prolonger le timer
-      existing.expiresAt = expiresAt
-      console.log('[OrbeTwitchLinks] Extended stream:', channel)
+      // Ajouter 5 minutes au timer existant
+      existing.expiresAt = existing.expiresAt + EXTEND_DURATION
+      console.log('[OrbeTwitchLinks] Extended stream by 5min:', channel)
     } else {
-      // Nouveau stream
+      // Nouveau stream (1h)
       const stream: DetectedStream = {
         channel,
         detectedAt: now,
-        expiresAt
+        expiresAt: now + STREAM_DURATION
       }
       temporaryStreams.value.push(stream)
       console.log('[OrbeTwitchLinks] New stream detected:', channel)
