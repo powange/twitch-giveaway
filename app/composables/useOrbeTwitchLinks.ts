@@ -53,6 +53,13 @@ export function useOrbeTwitchLinks(callbacks?: OrbeTwitchLinksCallbacks) {
     }
   }
 
+  // Chemins Twitch qui ne sont pas des streams
+  const IGNORED_PATHS = [
+    'collections', 'videos', 'clips', 'directory', 'settings',
+    'subscriptions', 'inventory', 'wallet', 'drops', 'search',
+    'team', 'p', 'jobs', 'turbo', 'store', 'downloads', 'broadcast'
+  ]
+
   // Détecter les liens Twitch dans un message
   function detectTwitchLinks(message: string): string[] {
     const regex = /(?:https?:\/\/)?(?:www\.)?twitch\.tv\/(\w+)/gi
@@ -61,8 +68,8 @@ export function useOrbeTwitchLinks(callbacks?: OrbeTwitchLinksCallbacks) {
 
     while ((match = regex.exec(message)) !== null) {
       const channel = match[1].toLowerCase()
-      // Ignorer le stream principal
-      if (channel !== MAIN_CHANNEL) {
+      // Ignorer le stream principal et les chemins non-stream
+      if (channel !== MAIN_CHANNEL && !IGNORED_PATHS.includes(channel)) {
         matches.push(channel)
       }
     }
