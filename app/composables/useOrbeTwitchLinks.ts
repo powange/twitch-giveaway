@@ -11,6 +11,7 @@ const STORAGE_KEY = 'orbe-streams'
 interface OrbeTwitchLinksCallbacks {
   onStreamDetected?: (stream: DetectedStream) => void
   onStreamExpired?: (channel: string) => void
+  onRaidDetected?: (fromChannel: string) => void
 }
 
 export function useOrbeTwitchLinks(callbacks?: OrbeTwitchLinksCallbacks) {
@@ -158,7 +159,16 @@ export function useOrbeTwitchLinks(callbacks?: OrbeTwitchLinksCallbacks) {
           continue
         }
 
-        // Parser les messages
+        // Détecter les raids (USERNOTICE avec msg-id=raid)
+        if (line.includes('USERNOTICE') && line.includes('msg-id=raid')) {
+          const raidMatch = line.match(/msg-param-login=(\w+)/)
+          const fromChannel = raidMatch ? raidMatch[1] : 'unknown'
+          console.log('[OrbeTwitchLinks] Raid detected from:', fromChannel)
+          callbacks?.onRaidDetected?.(fromChannel)
+          continue
+        }
+
+        // Parser les messages normaux
         const parsed = parseIRCMessage(line)
         if (parsed) {
           const links = detectTwitchLinks(parsed.message)

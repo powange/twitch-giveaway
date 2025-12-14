@@ -9,6 +9,7 @@ const parentDomain = ref('')
 const scheduleModalOpen = ref(false)
 const manualStreamInput = ref('')
 const isAddingStream = ref(false)
+const chatKey = ref(0) // Pour forcer le rechargement du chat
 
 // Calendrier des raids
 const raidSchedule = [
@@ -30,6 +31,11 @@ const { isConnected, temporaryStreams, mainChannel, removeStream, addOrExtendStr
   },
   onStreamExpired: (channel) => {
     destroyPlayer(channel)
+  },
+  onRaidDetected: (fromChannel) => {
+    console.log('[Orbe] Raid détecté depuis:', fromChannel, '- Rechargement du chat...')
+    // Recharger le chat en incrémentant la clé
+    chatKey.value++
   }
 })
 
@@ -238,6 +244,7 @@ onUnmounted(() => {
         class="rounded-lg border-2 border-gray-200 dark:border-gray-800 overflow-hidden lg:w-1/2 xl:w-2/5 h-[350px] lg:h-auto"
       >
         <iframe
+          :key="chatKey"
           :src="`https://www.twitch.tv/embed/${mainChannel}/chat?parent=${parentDomain}&darkpopout`"
           class="w-full h-full"
           frameborder="0"
