@@ -166,49 +166,39 @@ onUnmounted(() => {
         </UBadge>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <UCard
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+        <div
           v-for="stream in streamsWithTimeLeft"
           :key="stream.channel"
+          class="rounded-lg border-2 border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
         >
-          <template #header>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <UIcon name="i-simple-icons-twitch" class="w-4 h-4 text-purple-500" />
-                <span class="font-medium">{{ stream.channel }}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <UBadge color="warning" variant="soft">
-                  <UIcon name="i-lucide-clock" class="w-3 h-3 mr-1" />
-                  {{ formatTimeLeft(stream.timeLeft) }}
-                </UBadge>
-                <UButton
-                  icon="i-lucide-x"
-                  color="error"
-                  variant="ghost"
-                  size="xs"
-                  @click="closeStream(stream.channel)"
-                  title="Fermer ce stream"
-                />
-              </div>
+          <!-- Header compact -->
+          <div class="flex justify-between items-center px-3 py-2 border-b border-gray-200 dark:border-gray-800">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-simple-icons-twitch" class="w-4 h-4 text-purple-500" />
+              <span class="font-medium text-sm">{{ stream.channel }}</span>
             </div>
-          </template>
-
-          <div class="aspect-video bg-black rounded-lg overflow-hidden">
-            <div :id="`player-${stream.channel}`" class="w-full h-full" />
+            <div class="flex items-center gap-1">
+              <UBadge color="warning" variant="soft" size="xs">
+                <UIcon name="i-lucide-clock" class="w-3 h-3 mr-1" />
+                {{ formatTimeLeft(stream.timeLeft) }}
+              </UBadge>
+              <UButton
+                icon="i-lucide-x"
+                color="error"
+                variant="ghost"
+                size="xs"
+                @click="closeStream(stream.channel)"
+                title="Fermer ce stream"
+              />
+            </div>
           </div>
 
-          <template #footer>
-            <a
-              :href="`https://www.twitch.tv/${stream.channel}`"
-              target="_blank"
-              class="text-sm text-muted hover:text-foreground"
-            >
-              Ouvrir sur Twitch
-              <UIcon name="i-lucide-external-link" class="w-3 h-3 inline ml-1" />
-            </a>
-          </template>
-        </UCard>
+          <!-- Player -->
+          <div class="aspect-video bg-black">
+            <div :id="`player-${stream.channel}`" class="w-full h-full min-h-[150px]" />
+          </div>
+        </div>
       </div>
     </div>
 
