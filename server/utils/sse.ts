@@ -33,7 +33,3 @@ export async function broadcastUpdate() {
 export function broadcastDrawAlert(channel: string) {
   notifySSEClients('draw-alert', { channel })
 }
-
-export function broadcastOrbeStream(channel: string) {
-  notifySSEClients('orbe-stream', { channel })
-}

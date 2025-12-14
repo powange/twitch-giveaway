@@ -210,7 +210,8 @@ async function toggleClosed() {
         </template>
 
         <form
-          class="space-y-4"
+          id="giveaway-form"
+          class="space-y-4 max-h-[60vh] overflow-y-auto pr-2"
           @submit.prevent="saveGiveaway"
         >
           <UFormField
@@ -238,7 +239,7 @@ async function toggleClosed() {
           <UFormField label="Cadeaux">
             <div class="flex flex-wrap gap-2">
               <UButton
-                v-for="gift in gifts"
+                v-for="gift in [...gifts].sort((a, b) => a.title.localeCompare(b.title))"
                 :key="gift.id"
                 :color="form.giftIds.includes(gift.id) ? 'primary' : 'neutral'"
                 :variant="form.giftIds.includes(gift.id) ? 'solid' : 'outline'"
@@ -303,8 +304,10 @@ async function toggleClosed() {
               label="Follow requis pour participer"
             />
           </UFormField>
+        </form>
 
-          <div class="flex justify-between pt-4">
+        <template #footer>
+          <div class="flex justify-between">
             <div>
               <UButton
                 v-if="isEditing"
@@ -325,12 +328,13 @@ async function toggleClosed() {
               />
               <UButton
                 type="submit"
+                form="giveaway-form"
                 :label="isEditing ? 'Modifier' : 'Ajouter'"
                 :loading="isLoading"
               />
             </div>
           </div>
-        </form>
+        </template>
       </UCard>
     </template>
   </UModal>
