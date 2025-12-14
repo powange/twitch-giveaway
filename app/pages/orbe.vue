@@ -88,6 +88,15 @@ onUnmounted(() => {
         <p class="text-muted text-sm mt-1">
           Détection automatique des streams partenaires Sea of Thieves
         </p>
+        <a
+          href="https://seaofthieves.wiki.gg/wiki/The_Orb_Returns"
+          target="_blank"
+          class="text-sm text-primary hover:underline flex items-center gap-1 mt-1"
+        >
+          <UIcon name="i-lucide-book-open" class="w-3 h-3" />
+          Wiki - The Orb Returns
+          <UIcon name="i-lucide-external-link" class="w-3 h-3" />
+        </a>
       </div>
 
       <!-- Contrôles -->
