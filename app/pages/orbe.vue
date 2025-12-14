@@ -24,6 +24,8 @@ const raidSchedule = [
 // Streams temporaires détectés
 const { isConnected, temporaryStreams, mainChannel, removeStream, addOrExtendStream } = useOrbeTwitchLinks({
   onStreamDetected: (stream) => {
+    // Recharger le chat (souvent un raid vient de se produire)
+    chatKey.value++
     // Créer le player pour le nouveau stream
     nextTick(async () => {
       await createPlayer(`player-${stream.channel}`, stream.channel)
@@ -87,6 +89,8 @@ async function addManualStream() {
 // Écouter les streams ajoutés via SSE (par d'autres utilisateurs ou soi-même)
 watch(orbeStream, (newStream) => {
   if (newStream) {
+    // Recharger le chat (souvent un raid vient de se produire)
+    chatKey.value++
     addOrExtendStream(newStream.channel)
     nextTick(async () => {
       await createPlayer(`player-${newStream.channel}`, newStream.channel)
