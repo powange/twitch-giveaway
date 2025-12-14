@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DetectedStream } from '~/composables/useOrbeTwitchLinks'
 
-const { createPlayer, destroyPlayer, toggleMuteAll, globalMuted } = useTwitchPlayer()
+const { createPlayer, destroyPlayer, toggleMuteAll, globalMuted, setLowResourceMode } = useTwitchPlayer()
 const { orbeStream, clearOrbeStream } = useSSE()
 
 const showChat = ref(true)
@@ -25,8 +25,10 @@ const raidSchedule = [
 const { isConnected, temporaryStreams, mainChannel, removeStream, addOrExtendStream } = useOrbeTwitchLinks({
   onStreamDetected: (stream) => {
     // Créer le player pour le nouveau stream
-    nextTick(() => {
-      createPlayer(`player-${stream.channel}`, stream.channel)
+    nextTick(async () => {
+      await createPlayer(`player-${stream.channel}`, stream.channel)
+      // Attendre que le player soit prêt puis configurer en mode économique
+      setTimeout(() => setLowResourceMode(stream.channel), 2000)
     })
   },
   onStreamExpired: (channel) => {
@@ -86,8 +88,10 @@ async function addManualStream() {
 watch(orbeStream, (newStream) => {
   if (newStream) {
     addOrExtendStream(newStream.channel)
-    nextTick(() => {
-      createPlayer(`player-${newStream.channel}`, newStream.channel)
+    nextTick(async () => {
+      await createPlayer(`player-${newStream.channel}`, newStream.channel)
+      // Attendre que le player soit prêt puis configurer en mode économique
+      setTimeout(() => setLowResourceMode(newStream.channel), 2000)
     })
     clearOrbeStream()
   }
@@ -102,9 +106,11 @@ onMounted(() => {
   })
 
   // Créer les players pour les streams existants (depuis localStorage)
-  nextTick(() => {
+  nextTick(async () => {
     for (const stream of temporaryStreams.value) {
-      createPlayer(`player-${stream.channel}`, stream.channel)
+      await createPlayer(`player-${stream.channel}`, stream.channel)
+      // Attendre que le player soit prêt puis configurer en mode économique
+      setTimeout(() => setLowResourceMode(stream.channel), 2000)
     }
   })
 

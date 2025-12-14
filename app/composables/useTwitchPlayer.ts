@@ -229,6 +229,28 @@ function toggleQualityAll() {
   }
 }
 
+// Configurer un stream en mode économique (basse qualité + volume 1%)
+function setLowResourceMode(channel: string) {
+  const player = players.value.get(channel)
+  if (!player) return
+
+  try {
+    // Volume à 1%
+    player.setMuted(false)
+    player.setVolume(0.01)
+
+    // Qualité la plus basse
+    const availableQualities = player.getQualities()
+    const lowQuality = availableQualities
+      .filter(q => q.group !== 'auto')
+      .pop()
+    if (lowQuality) {
+      player.setQuality(lowQuality.group)
+      currentQuality.value.set(channel, lowQuality.group)
+    }
+  } catch { /* ignore */ }
+}
+
 export function useTwitchPlayer() {
   return {
     players: computed(() => players.value),
@@ -246,5 +268,6 @@ export function useTwitchPlayer() {
     setLowVolumeAll,
     togglePlayPauseAll,
     toggleQualityAll,
+    setLowResourceMode,
   }
 }
