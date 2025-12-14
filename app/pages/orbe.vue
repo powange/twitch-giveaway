@@ -2,10 +2,13 @@
 import type { DetectedStream } from '~/composables/useOrbeTwitchLinks'
 
 const { createPlayer, destroyPlayer, toggleMuteAll, globalMuted } = useTwitchPlayer()
+const { orbeStream, clearOrbeStream } = useSSE()
 
 const showChat = ref(true)
 const parentDomain = ref('')
 const scheduleModalOpen = ref(false)
+const manualStreamInput = ref('')
+const isAddingStream = ref(false)
 
 // Calendrier des raids
 const raidSchedule = [
@@ -18,7 +21,7 @@ const raidSchedule = [
 ]
 
 // Streams temporaires détectés
-const { isConnected, temporaryStreams, mainChannel, removeStream } = useOrbeTwitchLinks({
+const { isConnected, temporaryStreams, mainChannel, removeStream, addOrExtendStream } = useOrbeTwitchLinks({
   onStreamDetected: (stream) => {
     // Créer le player pour le nouveau stream
     nextTick(() => {
@@ -54,6 +57,35 @@ function closeStream(channel: string) {
   destroyPlayer(channel)
   removeStream(channel)
 }
+
+// Ajouter manuellement un stream (broadcast à tous les clients)
+async function addManualStream() {
+  if (!manualStreamInput.value.trim() || isAddingStream.value) return
+
+  isAddingStream.value = true
+  try {
+    await $fetch('/api/orbe/stream', {
+      method: 'POST',
+      body: { channel: manualStreamInput.value.trim() }
+    })
+    manualStreamInput.value = ''
+  } catch (error) {
+    console.error('Erreur lors de l\'ajout du stream:', error)
+  } finally {
+    isAddingStream.value = false
+  }
+}
+
+// Écouter les streams ajoutés via SSE (par d'autres utilisateurs ou soi-même)
+watch(orbeStream, (newStream) => {
+  if (newStream) {
+    addOrExtendStream(newStream.channel)
+    nextTick(() => {
+      createPlayer(`player-${newStream.channel}`, newStream.channel)
+    })
+    clearOrbeStream()
+  }
+})
 
 onMounted(() => {
   parentDomain.value = window.location.hostname
@@ -153,6 +185,25 @@ onUnmounted(() => {
           title="Afficher/Masquer le chat"
         />
       </div>
+    </div>
+
+    <!-- Ajout manuel de stream -->
+    <div class="mb-4 flex items-center gap-2">
+      <UInput
+        v-model="manualStreamInput"
+        placeholder="Lien ou nom du streamer (ex: twitch.tv/streamer)"
+        class="flex-1 max-w-md"
+        @keyup.enter="addManualStream"
+      />
+      <UButton
+        icon="i-lucide-plus"
+        color="primary"
+        :loading="isAddingStream"
+        :disabled="!manualStreamInput.trim()"
+        @click="addManualStream"
+      >
+        Ajouter
+      </UButton>
     </div>
 
     <!-- Stream principal Sea of Thieves -->

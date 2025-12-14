@@ -28,8 +28,14 @@ interface DrawAlert {
   timestamp: number
 }
 
+interface OrbeStreamEvent {
+  channel: string
+  timestamp: number
+}
+
 const sseData = ref<SSEData>({ giveaways: [], gifts: [] })
 const currentAlert = ref<DrawAlert | null>(null)
+const orbeStreamEvent = ref<OrbeStreamEvent | null>(null)
 const isConnected = ref(false)
 const isInitialized = ref(false)
 let eventSource: EventSource | null = null
@@ -67,6 +73,14 @@ function connect() {
     }
   })
 
+  eventSource.addEventListener('orbe-stream', (event) => {
+    const data = JSON.parse(event.data) as { channel: string }
+    orbeStreamEvent.value = {
+      channel: data.channel,
+      timestamp: Date.now()
+    }
+  })
+
   eventSource.onerror = () => {
     isConnected.value = false
     isInitialized.value = false // Reset pour utiliser les données initiales
@@ -99,9 +113,14 @@ export function useSSE() {
   const giveaways = computed(() => sseData.value.giveaways)
   const gifts = computed(() => sseData.value.gifts)
   const drawAlert = computed(() => currentAlert.value)
+  const orbeStream = computed(() => orbeStreamEvent.value)
 
   function clearAlert() {
     currentAlert.value = null
+  }
+
+  function clearOrbeStream() {
+    orbeStreamEvent.value = null
   }
 
   onMounted(() => {
@@ -113,6 +132,8 @@ export function useSSE() {
     gifts,
     drawAlert,
     clearAlert,
+    orbeStream,
+    clearOrbeStream,
     isConnected,
     isInitialized,
     refresh: connect,
