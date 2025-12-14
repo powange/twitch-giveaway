@@ -1,4 +1,4 @@
-import { broadcastOrbeStream } from '~/server/utils/sse'
+import { broadcastOrbeStream } from '../../utils/sse'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
