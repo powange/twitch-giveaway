@@ -134,13 +134,8 @@ export default defineEventHandler(async (event) => {
       SEA_OF_THIEVES_GAME_ID
     )
 
-    // Filtrer ceux qui contiennent "giveaway" dans le titre (insensible à la casse)
-    const giveawayStreams = streams.filter(stream =>
-      stream.title.toLowerCase().includes('giveaway')
-    )
-
-    // Formater la réponse
-    const result = giveawayStreams.map(stream => ({
+    // Formater la réponse (le filtrage par mot-clé se fait côté client)
+    const result = streams.map(stream => ({
       url: `https://twitch.tv/${stream.user_login}`,
       title: stream.title,
       viewerCount: stream.viewer_count,

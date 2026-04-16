@@ -43,6 +43,33 @@ const modalOpen = ref(false)
 const loading = ref(false)
 const scannedStreams = ref<TwitchGiveawayStream[]>([])
 
+// Filtres par mot-clé (activables/désactivables)
+const keywordFilters = ref([
+  { label: 'giveaway', active: true },
+  { label: 'clé', active: true },
+  { label: 'key', active: true },
+  { label: 'drop', active: false },
+  { label: 'concours', active: false },
+])
+
+function toggleFilter(index: number) {
+  const filter = keywordFilters.value[index]
+  if (filter) filter.active = !filter.active
+}
+
+const filteredStreams = computed(() => {
+  const activeKeywords = keywordFilters.value
+    .filter(f => f.active)
+    .map(f => f.label.toLowerCase())
+
+  if (activeKeywords.length === 0) return scannedStreams.value
+
+  return scannedStreams.value.filter(stream => {
+    const title = stream.title.toLowerCase()
+    return activeKeywords.some(kw => title.includes(kw))
+  })
+})
+
 // Utilitaire pour extraire le nom du streamer
 function getStreamerName(channel: string) {
   const match = channel.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([^/?]+)/i)
@@ -59,9 +86,9 @@ function isGiveawayClosed(giveaway: Giveaway): boolean {
   return giveawayDate < twoDaysAgo
 }
 
-// Séparer les streams scannés : avec/sans giveaway actif
+// Séparer les streams filtrés : avec/sans giveaway actif
 const streamsWithActiveGiveaway = computed(() => {
-  return scannedStreams.value.filter((stream) => {
+  return filteredStreams.value.filter((stream) => {
     const streamName = stream.streamerName.toLowerCase()
     return props.giveaways.some((g) => {
       if (isGiveawayClosed(g)) return false
@@ -72,7 +99,7 @@ const streamsWithActiveGiveaway = computed(() => {
 })
 
 const streamsWithoutActiveGiveaway = computed(() => {
-  return scannedStreams.value.filter((stream) => {
+  return filteredStreams.value.filter((stream) => {
     const streamName = stream.streamerName.toLowerCase()
     return !props.giveaways.some((g) => {
       if (isGiveawayClosed(g)) return false
@@ -93,7 +120,7 @@ async function scan() {
     if (streams.length === 0) {
       toast.add({
         title: 'Scan termine',
-        description: 'Aucun stream avec "giveaway" dans le titre',
+        description: 'Aucun stream Sea of Thieves en cours',
         color: 'info'
       })
     }
@@ -144,6 +171,24 @@ function createGiveaway(stream: TwitchGiveawayStream) {
             </div>
           </template>
 
+          <!-- Filtres par mot-clé -->
+          <div
+            v-if="!loading && scannedStreams.length > 0"
+            class="flex flex-wrap gap-2 mb-4"
+          >
+            <UBadge
+              v-for="(filter, index) in keywordFilters"
+              :key="filter.label"
+              :color="filter.active ? 'primary' : 'neutral'"
+              :variant="filter.active ? 'solid' : 'outline'"
+              size="md"
+              class="cursor-pointer select-none"
+              @click="toggleFilter(index)"
+            >
+              {{ filter.label }}
+            </UBadge>
+          </div>
+
           <div
             v-if="loading"
             class="flex flex-col items-center py-8"
@@ -166,7 +211,20 @@ function createGiveaway(stream: TwitchGiveawayStream) {
               class="w-12 h-12 text-muted mx-auto mb-4"
             />
             <p class="text-muted">
-              Aucun stream avec "giveaway" dans le titre
+              Aucun stream Sea of Thieves en cours
+            </p>
+          </div>
+
+          <div
+            v-else-if="filteredStreams.length === 0"
+            class="text-center py-8"
+          >
+            <UIcon
+              name="i-lucide-filter-x"
+              class="w-12 h-12 text-muted mx-auto mb-4"
+            />
+            <p class="text-muted">
+              Aucun stream ne correspond aux filtres actifs
             </p>
           </div>
 
@@ -290,7 +348,7 @@ function createGiveaway(stream: TwitchGiveawayStream) {
           <template #footer>
             <div class="flex justify-between items-center">
               <p class="text-sm text-muted">
-                {{ scannedStreams.length }} stream(s) trouve(s)
+                {{ filteredStreams.length }}/{{ scannedStreams.length }} stream(s)
                 <span
                   v-if="streamsWithoutActiveGiveaway.length > 0"
                   class="text-success"
