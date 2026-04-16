@@ -25,7 +25,30 @@ interface TwitchGiveawayStream {
   viewerCount: number
   streamerName: string
   startedAt: string
+  language: string
   thumbnail: string
+}
+
+// Mapping langue → flag emoji
+const languageFlags: Record<string, string> = {
+  fr: '🇫🇷',
+  en: '🇬🇧',
+  es: '🇪🇸',
+  de: '🇩🇪',
+  pt: '🇧🇷',
+  it: '🇮🇹',
+  ru: '🇷🇺',
+  ja: '🇯🇵',
+  ko: '🇰🇷',
+  zh: '🇨🇳',
+  pl: '🇵🇱',
+  nl: '🇳🇱',
+  sv: '🇸🇪',
+  tr: '🇹🇷',
+}
+
+function getFlag(language: string): string {
+  return languageFlags[language] || '🏳️'
 }
 
 const props = defineProps<{
@@ -52,22 +75,54 @@ const keywordFilters = ref([
   { label: 'concours', active: false },
 ])
 
-function toggleFilter(index: number) {
+// Filtres par langue
+const languageFilters = ref([
+  { label: 'Français', code: 'fr', flag: '🇫🇷', active: true },
+  { label: 'Anglais', code: 'en', flag: '🇬🇧', active: true },
+  { label: 'Autre', code: 'other', flag: '🏳️', active: false },
+])
+
+function toggleKeywordFilter(index: number) {
   const filter = keywordFilters.value[index]
   if (filter) filter.active = !filter.active
 }
 
+function toggleLanguageFilter(index: number) {
+  const filter = languageFilters.value[index]
+  if (filter) filter.active = !filter.active
+}
+
 const filteredStreams = computed(() => {
+  let streams = scannedStreams.value
+
+  // Filtre par mot-clé
   const activeKeywords = keywordFilters.value
     .filter(f => f.active)
     .map(f => f.label.toLowerCase())
 
-  if (activeKeywords.length === 0) return scannedStreams.value
+  if (activeKeywords.length > 0) {
+    streams = streams.filter(stream => {
+      const title = stream.title.toLowerCase()
+      return activeKeywords.some(kw => title.includes(kw))
+    })
+  }
 
-  return scannedStreams.value.filter(stream => {
-    const title = stream.title.toLowerCase()
-    return activeKeywords.some(kw => title.includes(kw))
-  })
+  // Filtre par langue
+  const activeLanguages = languageFilters.value.filter(f => f.active)
+  if (activeLanguages.length > 0) {
+    const langCodes = activeLanguages.map(f => f.code)
+    const includesOther = langCodes.includes('other')
+    const specificCodes = langCodes.filter(c => c !== 'other')
+
+    streams = streams.filter(stream => {
+      if (specificCodes.includes(stream.language)) return true
+      if (includesOther && !specificCodes.includes(stream.language)
+        && stream.language !== 'fr' && stream.language !== 'en') return true
+      return false
+    })
+  }
+
+  return streams
 })
 
 // Utilitaire pour extraire le nom du streamer
@@ -171,22 +226,39 @@ function createGiveaway(stream: TwitchGiveawayStream) {
             </div>
           </template>
 
-          <!-- Filtres par mot-clé -->
+          <!-- Filtres -->
           <div
             v-if="!loading && scannedStreams.length > 0"
-            class="flex flex-wrap gap-2 mb-4"
+            class="space-y-2 mb-4"
           >
-            <UBadge
-              v-for="(filter, index) in keywordFilters"
-              :key="filter.label"
-              :color="filter.active ? 'primary' : 'neutral'"
-              :variant="filter.active ? 'solid' : 'outline'"
-              size="md"
-              class="cursor-pointer select-none"
-              @click="toggleFilter(index)"
-            >
-              {{ filter.label }}
-            </UBadge>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs font-medium text-muted">Mots-clés</span>
+              <UBadge
+                v-for="(filter, index) in keywordFilters"
+                :key="filter.label"
+                :color="filter.active ? 'primary' : 'neutral'"
+                :variant="filter.active ? 'solid' : 'outline'"
+                size="md"
+                class="cursor-pointer select-none"
+                @click="toggleKeywordFilter(index)"
+              >
+                {{ filter.label }}
+              </UBadge>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs font-medium text-muted">Langue</span>
+              <UBadge
+                v-for="(filter, index) in languageFilters"
+                :key="filter.code"
+                :color="filter.active ? 'primary' : 'neutral'"
+                :variant="filter.active ? 'solid' : 'outline'"
+                size="md"
+                class="cursor-pointer select-none"
+                @click="toggleLanguageFilter(index)"
+              >
+                {{ filter.flag }} {{ filter.label }}
+              </UBadge>
+            </div>
           </div>
 
           <div
@@ -258,6 +330,7 @@ function createGiveaway(stream: TwitchGiveawayStream) {
                         name="i-simple-icons-twitch"
                         class="w-4 h-4 text-purple-500 flex-shrink-0"
                       />
+                      <span class="shrink-0">{{ getFlag(stream.language) }}</span>
                       <a
                         :href="stream.url"
                         target="_blank"
@@ -315,6 +388,7 @@ function createGiveaway(stream: TwitchGiveawayStream) {
                         name="i-simple-icons-twitch"
                         class="w-4 h-4 text-purple-500 flex-shrink-0"
                       />
+                      <span class="shrink-0">{{ getFlag(stream.language) }}</span>
                       <a
                         :href="stream.url"
                         target="_blank"

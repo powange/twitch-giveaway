@@ -141,6 +141,7 @@ export default defineEventHandler(async (event) => {
       viewerCount: stream.viewer_count,
       streamerName: stream.user_name,
       startedAt: stream.started_at,
+      language: stream.language,
       thumbnail: stream.thumbnail_url.replace('{width}', '320').replace('{height}', '180')
     }))
 
