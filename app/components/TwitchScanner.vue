@@ -340,9 +340,10 @@ function createGiveaway(stream: TwitchGiveawayStream) {
                       </a>
                       <UBadge
                         color="error"
-                        size="xs"
+                        size="sm"
+                        icon="i-lucide-eye"
                       >
-                        {{ stream.viewerCount }} viewers
+                        {{ stream.viewerCount }}
                       </UBadge>
                     </div>
                     <p class="text-sm text-muted line-clamp-2">
@@ -398,9 +399,10 @@ function createGiveaway(stream: TwitchGiveawayStream) {
                       </a>
                       <UBadge
                         color="neutral"
-                        size="xs"
+                        size="sm"
+                        icon="i-lucide-eye"
                       >
-                        {{ stream.viewerCount }} viewers
+                        {{ stream.viewerCount }}
                       </UBadge>
                       <UBadge
                         color="success"
