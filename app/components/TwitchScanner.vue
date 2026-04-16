@@ -29,26 +29,27 @@ interface TwitchGiveawayStream {
   thumbnail: string
 }
 
-// Mapping langue → flag emoji
-const languageFlags: Record<string, string> = {
-  fr: '🇫🇷',
-  en: '🇬🇧',
-  es: '🇪🇸',
-  de: '🇩🇪',
-  pt: '🇧🇷',
-  it: '🇮🇹',
-  ru: '🇷🇺',
-  ja: '🇯🇵',
-  ko: '🇰🇷',
-  zh: '🇨🇳',
-  pl: '🇵🇱',
-  nl: '🇳🇱',
-  sv: '🇸🇪',
-  tr: '🇹🇷',
+// Mapping langue Twitch → code pays ISO pour les drapeaux
+const languageToCountry: Record<string, string> = {
+  fr: 'fr',
+  en: 'gb',
+  es: 'es',
+  de: 'de',
+  pt: 'br',
+  it: 'it',
+  ru: 'ru',
+  ja: 'jp',
+  ko: 'kr',
+  zh: 'cn',
+  pl: 'pl',
+  nl: 'nl',
+  sv: 'se',
+  tr: 'tr',
 }
 
-function getFlag(language: string): string {
-  return languageFlags[language] || '🏳️'
+function getFlagUrl(language: string): string {
+  const country = languageToCountry[language] || 'xx'
+  return `https://flagcdn.com/16x12/${country}.png`
 }
 
 const props = defineProps<{
@@ -77,9 +78,9 @@ const keywordFilters = ref([
 
 // Filtres par langue
 const languageFilters = ref([
-  { label: 'Français', code: 'fr', flag: '🇫🇷', active: true },
-  { label: 'Anglais', code: 'en', flag: '🇬🇧', active: true },
-  { label: 'Autre', code: 'other', flag: '🏳️', active: false },
+  { label: 'Français', code: 'fr', flagUrl: 'https://flagcdn.com/16x12/fr.png', active: true },
+  { label: 'Anglais', code: 'en', flagUrl: 'https://flagcdn.com/16x12/gb.png', active: true },
+  { label: 'Autre', code: 'other', flagUrl: '', active: false },
 ])
 
 function toggleKeywordFilter(index: number) {
@@ -256,7 +257,8 @@ function createGiveaway(stream: TwitchGiveawayStream) {
                 class="cursor-pointer select-none"
                 @click="toggleLanguageFilter(index)"
               >
-                {{ filter.flag }} {{ filter.label }}
+                <img v-if="filter.flagUrl" :src="filter.flagUrl" :alt="filter.label" class="w-4 h-3 rounded-sm">
+                {{ filter.label }}
               </UBadge>
             </div>
           </div>
@@ -330,7 +332,7 @@ function createGiveaway(stream: TwitchGiveawayStream) {
                         name="i-simple-icons-twitch"
                         class="w-4 h-4 text-purple-500 flex-shrink-0"
                       />
-                      <span class="shrink-0">{{ getFlag(stream.language) }}</span>
+                      <img :src="getFlagUrl(stream.language)" :alt="stream.language" class="w-4 h-3 shrink-0 rounded-sm">
                       <a
                         :href="stream.url"
                         target="_blank"
@@ -389,7 +391,7 @@ function createGiveaway(stream: TwitchGiveawayStream) {
                         name="i-simple-icons-twitch"
                         class="w-4 h-4 text-purple-500 flex-shrink-0"
                       />
-                      <span class="shrink-0">{{ getFlag(stream.language) }}</span>
+                      <img :src="getFlagUrl(stream.language)" :alt="stream.language" class="w-4 h-3 shrink-0 rounded-sm">
                       <a
                         :href="stream.url"
                         target="_blank"
